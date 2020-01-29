@@ -27,10 +27,9 @@ basic_auth = BasicAuth(app)
 
 
 def calculate_flow():
-	while True:
-		# give the video camera, don't show the feed
-		movement = opt_flow(video_camera, False)
-		print(movement[-1], end="/r")
+	# give the video camera, don't show the feed
+	# opt_flow already has a while loop
+	movement = opt_flow(video_camera, True)
 
 
 def get_ip_address(remote_server="google.com"):
@@ -66,5 +65,6 @@ if __name__ == '__main__':
     t = threading.Thread(target=calculate_flow, args=())
     t.daemon = True
     t.start()
+    print("To see feed connect to " + get_ip_address() + ":5000")
     # to do, read ifconfig and assign IP using raspberry's IP
-    app.run(host='0.0.0.0', debug=False)
+    app.run(host='0.0.0.0', port = 5000, debug=False)

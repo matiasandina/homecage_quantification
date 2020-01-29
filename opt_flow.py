@@ -5,10 +5,39 @@ import argparse
 from imutils.video import FileVideoStream
 from imutils.video import VideoStream
 from collections import deque
+import datetime
+
+def save_deque(iter_number, timestamp, deque_to_save, maxlen):
+
+    # make filename from the deque's name
+    filename = "a.csv"
+    # iter_number[-1] is the last iteration if deque... here iternumber is an int
+    # we could also do max(iter_number)
+
+    unsaved_elements = iter_number % maxlen
+
+    if (unsaved_elements == 0):
+        print("Saving " + filename + " on iteration..." + str(iter_number))
+        with open(filename,'a') as outfile:
+            np.savetxt(outfile, deque_to_save,
+            delimiter=',', fmt='%s')
+
+    else:
+        # convert to list and slice the last unsaved elements
+        print("Saving rest of " + filename )
+        rest = list(deque_to_save)[-unsaved_elements:]
+        # Here we only save the rest 
+        with open(filename,'a') as outfile:
+            np.savetxt(outfile, rest,
+            delimiter=',', fmt='%s')
+    return
+
 
 def opt_flow(cap, show_video):
+    # buffer size for keeping RAM smooth 
+    maxlen = 10000
 
-    mag_deque = deque(maxlen=10000)
+    mag_deque = deque(maxlen=maxlen)
 
     # reduce fps
     #cap.set(cv2.CAP_PROP_FPS, 15)
@@ -16,8 +45,6 @@ def opt_flow(cap, show_video):
     # grab the current frame
     frame1 = cap.read()
 
-    # handle the frame from VideoCapture or VideoStream
-    # frame1 = frame[1] if args.get("video", False) else frame1
     # reduce size
     frame1 = imutils.resize(frame1, width=320)
 
@@ -34,7 +61,13 @@ def opt_flow(cap, show_video):
     hsv = np.zeros_like(frame1)
     # We fix saturation into the maximal possible value
     hsv[...,1] = 255
+
+    # create_iteration number
+    iter_number = 0
+
     while(1):
+        # get timestamp
+        timestamp = datetime.datetime.now().isoformat(" ")
         frame2 = cap.read()
         # reduce the frame so that we speed up computation
         frame2 = imutils.resize(frame2, width=320)
@@ -95,8 +128,14 @@ def opt_flow(cap, show_video):
                 with open('mag_deque.csv','w') as outfile:
                     np.savetxt(outfile, mag_deque,
                     delimiter=',', fmt='%s')
-        # assign the last frame to 
-        prev = gray    
+
+        # Clean-up
+        # assign the last frame to previous
+        prev = gray
+        unsaved_elements = iter_number % maxlen
+        if (unsaved_elements == 0):
+            save_deque(iter_number, timestamp, mag_deque, maxlen)
+        iter_number = iter_number + 1
 
 #    cap.release()
     cv2.destroyAllWindows()
