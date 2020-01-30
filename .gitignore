@@ -1,0 +1,7 @@
+# output formats should be ignored
+*.avi
+*.csv
+
+# python stuff
+__pycache__
+*.pyc

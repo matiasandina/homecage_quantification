@@ -15,7 +15,12 @@ import socket
 # Modified Matias Andina 2020-02-01
 
 # creates a camera object, don't flip vertically
-video_camera = VideoCamera(flip = False, usePiCamera = False, resolution = (640, 480)) 
+video_camera = VideoCamera(
+	flip = False, 
+	usePiCamera = False, 
+	resolution = (640, 480),
+	record = True
+	) 
 
 # App Globals (do not edit)
 app = Flask(__name__)
@@ -29,7 +34,10 @@ basic_auth = BasicAuth(app)
 def calculate_flow():
 	# give the video camera, don't show the feed
 	# opt_flow already has a while loop
-	movement = opt_flow(video_camera, True)
+	# opt_flow handles saving data
+	movement = opt_flow(video_camera, False)
+
+	# TODO: add device info here
 
 
 def get_ip_address(remote_server="google.com"):
