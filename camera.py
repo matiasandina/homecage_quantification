@@ -10,6 +10,7 @@ class VideoCamera(object):
     def __init__(
     self,
     flip = False, usePiCamera = True,
+    fps = 20.0,
     resolution = (640, 480),
     record = False, record_duration = None, record_timestamp = True
     ):
@@ -22,7 +23,7 @@ class VideoCamera(object):
         # trigger record
         self.trigger_record = record
         self.resolution = resolution
-        self.fps = 20.0
+        self.fps = fps
         # we might be in trouble if we switch from color to grayscale
         self.isColor = self.is_color()
         self.record_start = None
