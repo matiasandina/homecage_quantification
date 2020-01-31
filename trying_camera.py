@@ -7,6 +7,7 @@ video_camera = VideoCamera(
 	usePiCamera = False, 
 	resolution = (640, 480),
 	record = True,
+	record_timestamp = False,
 	record_duration = "00:05:00" # "HH:MM:SS"
 	) 
 
