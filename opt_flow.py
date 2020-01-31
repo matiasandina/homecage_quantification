@@ -7,10 +7,16 @@ from imutils.video import VideoStream
 from collections import deque
 import datetime
 
-def save_deque(iter_number, timestamp, deque_to_save, maxlen):
+def exit_handler(iter_number, timestamp, mag_deque, maxlen, filename):
+    print('Application is ending')
+    print('Calling save_deque()')
+    # save all deques
+    save_deque(iter_number, timestamp, mag_deque, maxlen, filename) 
+    cv2.destroyAllWindows()
 
-    # make filename from the deque's name
-    filename = "a.csv"
+
+def save_deque(iter_number, timestamp, deque_to_save, maxlen, filename):
+
     # iter_number[-1] is the last iteration if deque... here iternumber is an int
     # we could also do max(iter_number)
 
@@ -33,26 +39,16 @@ def save_deque(iter_number, timestamp, deque_to_save, maxlen):
     return
 
 
-def opt_flow(cap, show_video):
+def opt_flow(cap, show_video, filename):
     # buffer size for keeping RAM smooth 
     maxlen = 10000
-
     mag_deque = deque(maxlen=maxlen)
-
-    # reduce fps
-    #cap.set(cv2.CAP_PROP_FPS, 15)
 
     # grab the current frame
     frame1 = cap.read()
 
     # reduce size
     frame1 = imutils.resize(frame1, width=320)
-
-    # if we are viewing a video and we did not grab a frame,
-    # then we have reached the end of the video
-    if frame1 is None:
-        print("End of video. Exit")
-        return
 
     # ret, frame1 = cap.read()
     # Grayscale
@@ -69,6 +65,12 @@ def opt_flow(cap, show_video):
         # get timestamp
         timestamp = datetime.datetime.now().isoformat(" ")
         frame2 = cap.read()
+        # if we are viewing a video and we did not grab a frame,
+        # then we have reached the end of the video
+        if frame2 is None:
+            print("End of video. Getting out")
+        break
+
         # reduce the frame so that we speed up computation
         frame2 = imutils.resize(frame2, width=320)
 
@@ -134,12 +136,10 @@ def opt_flow(cap, show_video):
         prev = gray
         unsaved_elements = iter_number % maxlen
         if (unsaved_elements == 0):
-            save_deque(iter_number, timestamp, mag_deque, maxlen)
+            save_deque(iter_number, timestamp, mag_deque, maxlen, filename)
         iter_number = iter_number + 1
 
-#    cap.release()
-    cv2.destroyAllWindows()
-    # return mag_deque
+    exit_handler(iter_number, timestamp, mag_deque, maxlen, filename)
     return mag_deque
 
 
@@ -155,10 +155,13 @@ if __name__ == '__main__':
         help="Boolean, whether to show the video while computing flow (default is True)")
     args = vars(ap.parse_args())
     if args["source"] == "webcam":
-        # we are using the webcam 0
+        # we are using the webcam 0...might create problems
         cap = imutils.video.VideoStream(src=0).start()
-        opt_flow(cap, show_video = args["show_video"])
+        filename = datetime.datetime.now().isoformat("_") + "opt_flow.csv"
+        opt_flow(cap, show_video = args["show_video"], filename = filename)
     else:
         # all hell can break lose here but whatever
         cap = imutils.video.FileVideoStream(args["source"]).start()
-        opt_flow(cap, show_video = args["show_video"])
+        base = os.path.splitext(os.path.basename(args["source"]))[0]
+        filename =  base + "_opt_flow.csv"
+        opt_flow(cap, show_video = args["show_video"], filename = filename)
