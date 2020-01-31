@@ -70,7 +70,7 @@ def opt_flow(cap, show_video, filename):
         # then we have reached the end of the video
         if frame2 is None:
             print("End of video. Getting out")
-        break
+            break
 
         # reduce the frame so that we speed up computation
         frame2 = imutils.resize(frame2, width=320)
