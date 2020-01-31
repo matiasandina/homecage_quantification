@@ -6,6 +6,7 @@ from imutils.video import FileVideoStream
 from imutils.video import VideoStream
 from collections import deque
 import datetime
+import os
 
 def exit_handler(iter_number, timestamp, mag_deque, maxlen, filename):
     print('Application is ending')
