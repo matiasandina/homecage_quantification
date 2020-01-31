@@ -4,6 +4,7 @@ import imutils
 import time
 import numpy as np
 import datetime
+from videowriter import VideoWriter
 
 class VideoCamera(object):
     def __init__(
@@ -22,16 +23,22 @@ class VideoCamera(object):
         self.trigger_record = record
         self.resolution = resolution
         self.fps = 20.0
-        time.sleep(2.0)
         # we might be in trouble if we switch from color to grayscale
         self.isColor = self.is_color()
         self.record_start = None
         if (record_duration is not None):
             session_time = datetime.datetime.strptime(record_duration, '%H:%M:%S')
-            # Transform the time into number of steps
+            # Transform the time into number of seconds
             seconds = (session_time.hour * 60 + session_time.minute) * 60 + session_time.second
             self.record_duration = seconds
         self.record_timestamp = record_timestamp
+        if (record == True):
+            # we will use timestamps to prevent overwriting
+            self.name = str(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")) + "_output"
+            # start video_writer
+            self.video_writer = VideoWriter(filename=self.name, fps=self.fps, resolution = self.resolution)
+        time.sleep(2.0)
+
 
 
     def __del__(self):
@@ -53,16 +60,19 @@ class VideoCamera(object):
     def read(self):
         # this is the read function we want to do processing
         frame = self.flip_if_needed(self.vs.read())
+        timestamp = datetime.datetime.now()
         if (self.trigger_record):
             if (self.record_timestamp):
-                stamp = str(datetime.datetime.now())
-                cv2.putText(frame, stamp,
+                cv2.putText(frame, str(timestamp),
                     (10, 50), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     1,
                     (255,255,255),
                     1)
-            self.record(frame)
+            # let's only call it if the framerate is ok
+            if (self.check_framerate(timestamp)):
+                self.video_writer.put_to_q(frame, timestamp)
+            # self.record(frame)
         return frame
 
     def get_frame(self, label_time):
@@ -103,7 +113,8 @@ class VideoCamera(object):
         ret, jpeg = cv2.imencode('.jpg', frame)
         return (jpeg.tobytes(), found_objects)
 
-
+    # The function below has problems with frame rate not being constant
+    # We account for frame rate by assuming constant frame rate but that fails in real life
     def record(self, frame):
         """
         Opencv VideoWriter
@@ -119,22 +130,16 @@ class VideoCamera(object):
         https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
         """
         if (self.rec_set == False):
-            # we will use timestamps to prevent overwriting
-            self.name = str(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")) + "_output.avi"
             self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
             self.recorder = cv2.VideoWriter(self.name, self.fourcc, self.fps, self.resolution, self.isColor)
             self.rec_set = True
             self.prev_frame = time.time()
             self.record_start = self.prev_frame
-            # Write first frame
-            self.recorder.write(frame)
-
         else:
             # account for fps
             # otherwise, we would need to account for this via waitKey(int(1000/fps)) 
             current_frame = time.time()
             if (current_frame - self.prev_frame > 1/self.fps):
-                self.recorder.write(frame)
                 self.prev_frame = current_frame
 
             if (self.prev_frame - self.record_start > self.record_duration):
@@ -143,3 +148,31 @@ class VideoCamera(object):
                 print(self.record_duration)
                 # stop the recording (not the camera)
                 self.trigger_record = False
+
+
+    def check_framerate(self, timestamp):
+        if (self.rec_set == False):
+            self.rec_set = True
+            self.prev_frame = timestamp
+            self.record_start = self.prev_frame
+            return True
+        else:
+            # account for fps
+            # otherwise, we would need to account for this via waitKey(int(1000/fps)) 
+            delta_time = (timestamp - self.prev_frame).total_seconds() 
+            if (delta_time > 1/self.fps):
+                self.prev_frame = timestamp
+                return True
+
+            current_duration = (self.prev_frame - self.record_start).total_seconds()
+
+            if (current_duration > self.record_duration):
+                print(self.prev_frame)
+                print(self.record_start)
+                print(self.record_duration)
+                # stop the recording (not the camera)
+                self.video_writer.stop()
+                # stop triggering record in the future
+                self.trigger_record = False
+        # if we got up to here and no conditions were met
+        return False

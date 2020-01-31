@@ -125,7 +125,7 @@ def opt_flow(cap, show_video):
             if k == 27:
                 break
             elif k == ord('s'):
-                with open('mag_deque.csv','w') as outfile:
+                with open('mag_deque.csv','a') as outfile:
                     np.savetxt(outfile, mag_deque,
                     delimiter=',', fmt='%s')
 
