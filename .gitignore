@@ -1,6 +1,6 @@
 # output formats should be ignored
-*.avi
-*.csv
+#*.avi
+#*.csv
 
 # python stuff
 __pycache__
