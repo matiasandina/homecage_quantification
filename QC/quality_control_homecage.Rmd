@@ -12,18 +12,33 @@ library(tidyverse)
 ```
 
 
-Mouse was tracked using `track_centroid.py`
-I specified 
-`-blackLower (0, 0, 0 )`
-`-blackUpper = (66, 255, 35)`
+Mouse was tracked by hand :( 
 
 Read stuff
 
 ```{r}
 source("calculate_distance.R")
 
-truth <- read.csv(file = "trial2_mouse_track.csv", header=FALSE)
-names(truth) <- c("x", "y")
+truth <- read.table(file = "homecage/2020-01-31_14:21:23_manual_output.txt", sep="\t")
+names(truth) <- c("frame", "seconds", "x", "y", "x_meters", "y_meters", "comment")
+
+# modify the zero zeros
+truth <- truth %>%
+  mutate(x=ifelse(x * y == 0, NA, x),
+         y=ifelse(x * y == 0, NA, y)) %>%
+  # impute missing values
+  mutate(x = runmed(zoo::na.locf(x), 31),
+         y = runmed(zoo::na.locf(y), 31))
+
+
+## set seed and add noise to hand scoring
+
+set.seed(12345)
+noise_x <- rnorm(nrow(truth), 0, 1)
+noise_y <- rnorm(nrow(truth), 0, 1)
+truth <- truth %>% mutate(x = x + noise_x, y = y + noise_y)
+
+
 plot(truth$x, truth$y, type='l', xlab = "", ylab = "",
      main="Ground truth algorithm")
 ```
@@ -32,12 +47,14 @@ Make the datasets equal in length
 
 ```{r}
 
-movement <- read.csv("trial2_movement.csv", header=FALSE)
+movement <- read.csv("homecage/2020-01-31_14:21:23_output_opt_flow.csv", header=FALSE)
 # First value should be zero by definition
 movement[1, 1] <- 0
 names(movement) <- "movement"
 
-truth <- truth[1:nrow(movement), ]
+# make them have same frame number
+movement <- movement[1:6000, ]
+
 ```
 
 
