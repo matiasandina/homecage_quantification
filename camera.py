@@ -5,6 +5,7 @@ import time
 import numpy as np
 import datetime
 from videowriter import VideoWriter
+import os
 
 class VideoCamera(object):
     def __init__(
@@ -63,6 +64,8 @@ class VideoCamera(object):
         frame = self.flip_if_needed(self.vs.read())
         timestamp = datetime.datetime.now()
         if (self.trigger_record):
+            # check whether the video size is ok or we need to chunk
+            self.check_video_filesize()
             if (self.record_timestamp):
                 cv2.putText(frame, str(timestamp),
                     (10, 50), 
@@ -76,6 +79,7 @@ class VideoCamera(object):
             # self.record(frame)
         return frame
 
+    # This function handles the posting of .jpg through ip stream
     def get_frame(self, label_time):
         # This function ends up converting to jpg and timestamping
         # intended for streaming 
@@ -150,7 +154,6 @@ class VideoCamera(object):
                 # stop the recording (not the camera)
                 self.trigger_record = False
 
-
     def check_framerate(self, timestamp):
         if (self.rec_set == False):
             self.rec_set = True
@@ -177,3 +180,18 @@ class VideoCamera(object):
                 self.trigger_record = False
         # if we got up to here and no conditions were met
         return False
+
+    def check_video_filesize(self):
+        #TODO: Potential problem harcoded extension, it's also harcoded on videowriter 
+        if os.path.exists(self.name + ".avi"):
+            current_size = os.stat(self.name + ".avi").st_size
+            # size will be in bytes, let's have a limit of 100 Mb
+            if (current_size > 100 * 1024 * 1024):
+                # stop the video writer
+                self.video_writer.stop()
+                print("Video truncated...initializing new clip")
+                # create a new filename
+                self.name = str(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")) + "_output"
+                # start the writer again
+                self.video_writer = VideoWriter(filename=self.name, fps=self.fps, resolution = self.resolution)
+

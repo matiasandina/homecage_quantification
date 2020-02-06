@@ -15,7 +15,7 @@ library(tidyverse)
 Mouse was tracked using `track_centroid.py`
 I specified 
 `-blackLower (0, 0, 0 )`
-`-blackUpper = (255, 255, 135)`
+`-blackUpper = (66, 255, 35)`
 
 Read stuff
 
