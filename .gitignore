@@ -5,3 +5,7 @@
 # python stuff
 __pycache__
 *.pyc
+
+
+# ip files that end _ip.txt
+*_ip.txt

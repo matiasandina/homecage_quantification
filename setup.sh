@@ -22,6 +22,12 @@ sudo pip3 install pandas
 sudo pip3 install opencv-contrib-python==4.1.0.25
 sudo pip3 install matplotlib
 sudo pip3 install imutils
+pip install python-crontab
 
+# setup the ssh keys
+bash setup_ssh.sh
 
-
+# setup sending ip on startup
+# for this we use cron_setup.py script
+# this script will call send_ip.sh on every reboot
+python3 ~/homecage_quantification/setup_cron.py
