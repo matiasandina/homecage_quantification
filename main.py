@@ -9,17 +9,20 @@ from opt_flow import opt_flow
 import datetime
 import socket
 
+
 # source
 # https://github.com/HackerShackOfficial/Smart-Security-Camera
 
 # Modified Matias Andina 2020-02-01
 
 # creates a camera object, don't flip vertically
+# we will not use this camera to record
 video_camera = VideoCamera(
 	flip = False, 
 	usePiCamera = False, 
 	resolution = (640, 480),
-	record = True
+	record = False,
+	record_timestamp = True
 	) 
 
 # App Globals (do not edit)
@@ -30,14 +33,18 @@ app.config['BASIC_AUTH_FORCE'] = True
 
 basic_auth = BasicAuth(app)
 
-
 def calculate_flow():
 	# give the video camera, don't show the feed
 	# opt_flow already has a while loop
 	# opt_flow handles saving data
-	movement = opt_flow(video_camera, False)
+	filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "_opt_flow.csv"
+	movement = opt_flow(video_camera, True, filename = filename)
 
 	# TODO: add device info here
+
+
+# get ip of WI-FI wlan0 from terminal
+# ifconfig wlan0 | awk '/inet /{print $2}'
 
 
 def get_ip_address(remote_server="google.com"):
@@ -59,8 +66,11 @@ def index():
     return render_template('index.html')
 
 def gen(camera):
+    camera_stamp = get_ip_address()
     while True:
-        frame = camera.get_frame(label_time=True)
+    	# frame will be contaminated with timestamp and ip address
+    	# we accept this as noise on opt_flow
+        frame = camera.get_frame(label_time=True, camera_stamp = camera_stamp)
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 

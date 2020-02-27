@@ -80,21 +80,30 @@ class VideoCamera(object):
         return frame
 
     # This function handles the posting of .jpg through ip stream
-    def get_frame(self, label_time):
+    def get_frame(self, label_time, camera_stamp = None):
         # This function ends up converting to jpg and timestamping
         # intended for streaming 
-        frame = self.flip_if_needed(self.vs.read())
+        upload_frame = self.flip_if_needed(self.vs.read())
         if (label_time):
-            cv2.putText(frame, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+            cv2.putText(upload_frame, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                 (10, 50), 
                 cv2.FONT_HERSHEY_SIMPLEX, 
                 1,
                 (255,255,255),
-                1)    
+                1)
+        if (camera_stamp is not None):
+            cv2.putText(upload_frame, str(camera_stamp), 
+                (10, self.resolution[1] - 50), 
+                cv2.FONT_HERSHEY_SIMPLEX, 
+                1,
+                (255,255,255),
+                1)
 
-        ret, jpeg = cv2.imencode('.jpg', frame)
+        ret, jpeg = cv2.imencode('.jpg', upload_frame)
         return jpeg.tobytes()
 
+    # We can use this function if we had a classifier that was well suited
+    # It might need computation power to do this in real time
     def get_object(self, classifier):
         found_objects = False
         frame = self.flip_if_needed(self.vs.read()).copy() 

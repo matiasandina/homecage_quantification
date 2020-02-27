@@ -42,7 +42,7 @@ def save_deque(iter_number, timestamp, deque_to_save, maxlen, filename):
 
 def opt_flow(cap, show_video, filename):
     # buffer size for keeping RAM smooth 
-    maxlen = 10000
+    maxlen = 1000
     mag_deque = deque(maxlen=maxlen)
 
     # grab the current frame
@@ -131,6 +131,11 @@ def opt_flow(cap, show_video, filename):
                 with open('mag_deque.csv','a') as outfile:
                     np.savetxt(outfile, mag_deque,
                     delimiter=',', fmt='%s')
+        else:
+            # if we don't give any feedback it's difficult to know
+            print("opt_flow.py Iteration: " + str(iter_number) + " " +
+             "Total movement: " + str(np.sum(mag)),
+              end = "\r")
 
         # Clean-up
         # assign the last frame to previous
@@ -158,7 +163,7 @@ if __name__ == '__main__':
     if args["source"] == "webcam":
         # we are using the webcam 0...might create problems
         cap = imutils.video.VideoStream(src=0).start()
-        filename = datetime.datetime.now().isoformat("_") + "opt_flow.csv"
+        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "_opt_flow.csv"
         opt_flow(cap, show_video = args["show_video"], filename = filename)
     else:
         # all hell can break lose here but whatever
