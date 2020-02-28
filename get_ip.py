@@ -5,6 +5,7 @@
 
 import subprocess
 import re
+import time
 
 def get_ip():
     # this will get the wlan0 ip
@@ -33,6 +34,11 @@ def get_mac(interface = 'wlan0'):
 
     return mac[0:17]
 
+### main -----
+# let's sleep for a while until we can make sure we have an ip
+sleep_time =120 #seconds
+print("sleeping for " + str(sleep_time) + " seconds")
+time.sleep(sleep_time)
 print("get_ip.py is retrieving MAC & IP")
 ip = get_ip()
 mac = get_mac()
