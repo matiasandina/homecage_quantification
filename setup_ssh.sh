@@ -42,6 +42,6 @@ yes ".ssh/id_rsa" | ssh-keygen -o -a 100 -t RSA -N ""
 #              COPY KEYS
 # -------------------------------------------------
 
-ssh-copy-id choilab@10.93.15.148
+ssh-copy-id choilab@10.93.6.88
 
 
