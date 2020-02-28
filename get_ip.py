@@ -64,4 +64,3 @@ file = open(folder + mac + "_ip.txt", "w")
 file.write("MAC address is: "+ mac + "\n")
 file.write("IP is: " + ip)
 file.close() 
-
