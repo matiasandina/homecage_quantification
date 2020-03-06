@@ -23,6 +23,7 @@ sudo pip3 install opencv-contrib-python==4.1.0.25
 sudo pip3 install matplotlib
 sudo pip3 install imutils
 sudo pip3 install python-crontab
+sudo pip3 install flask_basicauth
 
 # setup the ssh keys
 bash setup_ssh.sh
