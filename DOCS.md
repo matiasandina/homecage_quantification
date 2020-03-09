@@ -98,7 +98,41 @@ The proper way to setup this is detailed on [README.md](https://github.com/matia
 
 The main script to control the cameras, run optic flow, and stream via IP is called `main.py`.
 
-### [Video Stream](#video-stream)
+1. Check that the camera is OK.
+
+```
+cd homecage_quantification/
+python3 preview_camera.py
+```
+
+After a couple of seconds you should see a window with camera preview. Press 'q' to quit the preview.
+
+You can then trigger the program doing
+
+```
+python3 main.py
+```
+
+You should see pop-up windows with the cameras and optic flow.
+
+```
+To see feed connect to IP:5000
+  * Serving Flask app "main" (lazy loading)
+  ...
+```
+
+Data will be saved on `homecage_quantification/` folder. See [Video Stream](#video-stream) section for ways to access the stream.
+
+
+The thermal camera will be running from an openMV board and a Lepton 3.5 module.
+We can trigger a run with
+
+```
+python3 start_thermal.py
+```
+The LED on the openMV board should go from blue to green and then start capturing images. Your data will be saved on the local SD card of the openMV board.
+
+### Video Stream
 
 It is possible to stream to a local network to be visualized by other computers in the network (via IP). To accomplish this, proper setup is needed. Mainly:
 
@@ -107,7 +141,7 @@ It is possible to stream to a local network to be visualized by other computers 
 1. A folder on choilab computer with the proper information for each raspberry (MAC address and IP).
 1. The `raspberry_IP/update_pi_info.py` script on the choilab computer. 
 
-To visualize the stream:
+To visualize the stream, on the choilab computer:
 
 1. Open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>)
 1. Navigate to the proper folder (`cd Raspberry_IP/`)
@@ -115,7 +149,7 @@ To visualize the stream:
 
 This will open many browser tabs. You will be prompted for username and password.
 
-> In principle, any computer connected to the network can check the stream from a web browser. It will need IPs to do so (found on the `raspberry_IP` folder).
+> In principle, any computer connected to the network can check the stream from a web browser. It will need IPs to do so (found on the `raspberry_IP` folder on the choilab computer).
 
 
 ### Record video to local file. 

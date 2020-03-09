@@ -82,8 +82,6 @@ and check to make sure that only the key(s) you wanted were added.
 
 You don't need to log in. You can close the terminal.
 
-### Project setup
-
 ## Usage
 
 For detailed usage refer to [DOCS.md](https://github.com/matiasandina/homecage_quantification/blob/master/DOCS.md)

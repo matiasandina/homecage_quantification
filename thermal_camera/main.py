@@ -16,7 +16,7 @@ def timestamp(datetime):
     time_string = '-'.join([hour(datetime), minute(datetime), second(datetime)])
     return "T".join([date_string, time_string])
 def create_filename(datetime, ext=".jpg"):
-    return timestamp(datetime) + "_capture" + ext
+    return '/' + timestamp(datetime) + "_capture" + ext
 def blink(led_number, sleep_time = 300):
     pyb.LED(led_number).on()
     pyb.delay(sleep_time)
@@ -97,6 +97,9 @@ while(True):
 
 while(True):
     # capture lepton
-    # filename = create_filename(rtc.datetime())
-    # img.save(filename)
+    filename = create_filename(rtc.datetime())
+    img = sensor.snapshot()
+    img.save(filename)
+    # sleep for 1 minute
+    pyb.delay(1000 * 60)
 
