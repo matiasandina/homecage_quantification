@@ -9,9 +9,9 @@ IFACE=wlan0
 read MAC </sys/class/net/$IFACE/address
 
 # log in and make dir if needed
-ssh choilab@10.93.15.148 mkdir -p raspberry_IP/$MAC 
+ssh choilab@10.93.6.88 mkdir -p raspberry_IP/$MAC 
 
 
 a="_ip.txt"
 
-scp ~/homecage_quantification/$MAC$a choilab@10.93.15.148:~/raspberry_IP/$MAC
+scp ~/homecage_quantification/$MAC$a choilab@10.93.6.88:~/raspberry_IP/$MAC

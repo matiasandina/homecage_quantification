@@ -22,7 +22,7 @@ sudo pip3 install pandas
 sudo pip3 install opencv-contrib-python==4.1.0.25
 sudo pip3 install matplotlib
 sudo pip3 install imutils
-pip install python-crontab
+sudo pip3 install python-crontab
 
 # setup the ssh keys
 bash setup_ssh.sh

@@ -43,10 +43,6 @@ def calculate_flow():
 	# TODO: add device info here
 
 
-# get ip of WI-FI wlan0 from terminal
-# ifconfig wlan0 | awk '/inet /{print $2}'
-
-
 def get_ip_address(remote_server="google.com"):
 	"""
 	Return the/a network-facing IP number for this system.
