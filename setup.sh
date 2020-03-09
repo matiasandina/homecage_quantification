@@ -32,3 +32,8 @@ bash setup_ssh.sh
 # for this we use cron_setup.py script
 # this script will call send_ip.sh on every reboot
 python3 ~/homecage_quantification/setup_cron.py
+
+
+# setup scheduling git pulls
+# for this, we use auto_git_pull.py script
+python3 ~/homecage_quantification/auto_git_pull.py

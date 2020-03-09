@@ -1,10 +1,12 @@
+# This script will create a cron job for calling git pull automatically
+
 from crontab import CronTab
 # this is what we want to run
-cmd_command = "bash ~/homecage_quantification/send_ip.sh"
+cmd_command = "cd ~/homecage_quantification/ && git pull"
 
-job_comment = "send ip to choilab1"
+job_comment = 'automatic git pull'
 
-# Get cron object
+# get cron object
 cron = CronTab(user="pi")
 # don't create a new job if it is already there
 # first check if it's already there
@@ -14,8 +16,8 @@ job_exists = any(list(map(lambda x: x.comment == job_comment, cron)))
 if job_exists:
     for job in cron:
         if job.comment == job_comment:
-            print("job named: " + job_comment + " already exists, scheduling 1 minute")
-            job.minute.every(1)
+            print("job named: " + job_comment + " already exists, scheduling 2 hours")
+            job.hour.every(2)
             # write the program
             cron.write()
 else:
@@ -23,7 +25,7 @@ else:
     # create a new job
     job = cron.new(command = cmd_command, comment=job_comment)
     # schedule it every minute
-    job.minute.every(1)
+    job.hour.every(2)
     # write the program
     cron.write()
 
