@@ -23,6 +23,7 @@ sudo pip3 install opencv-contrib-python==4.1.0.25
 sudo pip3 install matplotlib
 sudo pip3 install imutils
 sudo pip3 install python-crontab
+sudo pip3 install flask-basicauth
 
 # setup the ssh keys
 bash setup_ssh.sh
@@ -31,3 +32,8 @@ bash setup_ssh.sh
 # for this we use cron_setup.py script
 # this script will call send_ip.sh on every reboot
 python3 ~/homecage_quantification/setup_cron.py
+
+
+# setup scheduling git pulls
+# for this, we use auto_git_pull.py script
+python3 ~/homecage_quantification/auto_git_pull.py
