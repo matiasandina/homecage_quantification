@@ -88,15 +88,17 @@ Why?
 
 We gain access to the raspberries through the local network (either ssh or vnc). You can find VNC Viewer [here]. If you are trying to use VNC viewer from an Android device, you can find it on the play store.
 
-Our aim is to setup the raspberries in a way that allows us to  Every raspberry is scheduled 
+Our aim is to setup the raspberries in a way that allows us to always know the mac address and IP of each Raspberry Pi. Every Raspberry Pi is scheduled to send this information to the central computer. We can use that information to visualize the experiment and perform  (see [Video Stream](#video-stream)). 
 
 ![](docs_img/raspi_IP.png)
+
+The proper way to setup this is detailed on [README.md](https://github.com/matiasandina/homecage_quantification/blob/master/README.md) for this repository. If you followed these steps, your configuration should be good to go.
 
 ### How to run an experiment
 
 The main script to control the cameras, run optic flow, and stream via IP is called `main.py`.
 
-### Video stream
+### [Video Stream](#video-stream)
 
 It is possible to stream to a local network to be visualized by other computers in the network (via IP). To accomplish this, proper setup is needed. Mainly:
 
@@ -111,7 +113,7 @@ To visualize the stream:
 1. Navigate to the proper folder (`cd Raspberry_IP/`)
 1. Run the python script `python3 update_pi_info.py`
 
-This will open many browser. You will be prompted for username and password.
+This will open many browser tabs. You will be prompted for username and password.
 
 > In principle, any computer connected to the network can check the stream from a web browser. It will need IPs to do so (found on the `raspberry_IP` folder).
 
@@ -119,9 +121,6 @@ This will open many browser. You will be prompted for username and password.
 ### Record video to local file. 
 
 It might be necessary to record. For this, the `main.py` script allows you to change the recording specifically on the camera object.
-
-
-## Raspbian install
 
 
 ## Remote connection to raspberry Pi
@@ -135,3 +134,9 @@ ssh pi@ip_address
 This will give you access to the terminal but you will not be able to visualize anything going on.
 
 > If you have a keyboard/monitor connected to the Pi, you can use VNC viewer to do remote control. 
+
+You can access any raspberry using VNC software. This can be used to:
+
+1. See the desktop/folders.
+1. Remotely control the raspberry.
+1. Transfer files (aka, send your data from the raspberry to another computer).
