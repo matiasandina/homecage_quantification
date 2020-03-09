@@ -86,6 +86,8 @@ You don't need to log in. You can close the terminal.
 
 ## Usage
 
+For detailed usage refer to [DOCS.md](https://github.com/matiasandina/homecage_quantification/blob/master/DOCS.md)
+
 ## Contribute
 
 This is a preliminary release. Please file issues to improve the functioning.

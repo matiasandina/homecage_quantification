@@ -7,7 +7,7 @@ This document aims to capture general procedures for the homecage_quantification
 
 > We are using FED3 devices to deliver food and quantify intake in the homecage
 
-## What is a FED?
+### What is a FED?
 
 FED3 are devices were created by Lex Kravitz. If you want to buid one from scratch, [here's the list of materials](https://hackaday.io/project/106885-feeding-experimentation-device-3-fed3#menu-components).
 
@@ -17,20 +17,20 @@ For now, you have to 3D print yourself. Printer quality is important for mechani
 
 > As of March 2020, Open Ephys is working on finding a 3D printing partner. To be updated.
 
-### Setup
+### FED3 Setup
 
 On the heart of the FED3 devices, there's an Adafruit M0 board. This means you will be using the Arduino IDE for managing code and communicating with the device. Carefully follow the instructions on the hackaday page (link below).
 
 You can find all the relevant information [here](https://hackaday.io/project/106885/instructions)
 
-### Usage
+### FED3 Usage
 
 Please check the videos for FED device on YouTube
 
 * [Building device](https://hackaday.io/project/106885-feeding-experimentation-device-3-fed3/log/157363-fed-build-video#discussion-list)
 * [Basic Usage](https://youtu.be/VvVrZ950hvQ)
 
-### Data Analysis
+### FED3 Data Analysis
 
 You can use [this tool](github.com/matiasandina/FED_quantification) for data analysis.
 
@@ -40,7 +40,8 @@ You can use [this tool](github.com/matiasandina/FED_quantification) for data ana
 
 FED3 devices are powered by batteries that take quite a long time to refill. Although they last for a bit more than a week during operation, they can take up to **2 days** to fully charge. 
 
-The current solution is to have extra batteries 
+The current solution is to have extra batteries charged. It's a good idea to have extra [battery packs](https://www.adafruit.com/product/354) charging with [this charger](https://www.adafruit.com/product/1304). Just swap them on the device when they get low.
+
 
 #### Setting the time
 
@@ -62,7 +63,7 @@ Luckily I had a Windows machine available, so I:
 Uploaded the sketches with no problem. Clock updated, FED3 back to work. Your clock should be good to go until the next daylight savings time messes with your data or the clock's battery dies, whichever comes first! 
 
 
-### Places with more information
+### FED3: read more
 
 Your questions will be probably answered if you visit these sites or contact these people. 
 
@@ -83,10 +84,17 @@ Why?
 1. It gets the job done (general activity estimate).
 1. It's computationally inexpensive. As of 2020, DeepLabCut is still computationally expensive, we can't run it real time on a raspberry Pi 4.
 
+### Rapsberry Pi
 
-## How to run an experiment
+We gain access to the raspberries through the local network (either ssh or vnc). You can find VNC Viewer [here]. If you are trying to use VNC viewer from an Android device, you can find it on the play store.
 
-The main script to control the cameras, run optic flow and stream via IP is called `main.py`.
+Our aim is to setup the raspberries in a way that allows us to  Every raspberry is scheduled 
+
+![](docs_img/raspi_IP.png)
+
+### How to run an experiment
+
+The main script to control the cameras, run optic flow, and stream via IP is called `main.py`.
 
 ### Video stream
 
