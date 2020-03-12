@@ -8,6 +8,12 @@ git config --global user.email matiasandina@gmail.com
 sudo apt-get update -y
 sudo apt-get upgrade -y
 
+# setup the screen resolution on config.txt
+sudo sh -c "echo 'hdmi_force_hotplug=1' >> /boot/config.txt"
+sudo sh -c "echo 'hdmi_group=2' >> /boot/config.txt"
+sudo sh -c "echo 'hdmi_mode=82' >> /boot/config.txt"
+
+
 # install requirements for opencv
 sudo apt-get install libhdf5-dev -y
 sudo apt-get install libatlas-base-dev -y
