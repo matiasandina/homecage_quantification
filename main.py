@@ -8,7 +8,7 @@ import threading
 from opt_flow import opt_flow
 import datetime
 import socket
-
+import os
 
 # source
 # https://github.com/HackerShackOfficial/Smart-Security-Camera
@@ -32,6 +32,22 @@ app.config['BASIC_AUTH_PASSWORD'] = 'choilab'
 app.config['BASIC_AUTH_FORCE'] = True
 
 basic_auth = BasicAuth(app)
+
+def running_flag():
+	# caution this only works for raspberry PIs on WiFI
+	mac = open('/sys/class/net/wlan0/address').readline()
+	# replace "\n" coming from readline()
+	mac = mac.replace("\n", "")
+
+	while True:
+		with open('running.txt', "w") as the_file:
+			the_file.write(datetime.datetime.now().isoformat())
+		# send IP to choilab
+		cmd_command = "scp ~/homecage_quantification/running.txt choilab@10.93.6.88:~/raspberry_IP/" + mac
+		os.system(cmd_command)
+		# sleep 10 minutes
+		time.sleep(1 * 60)
+
 
 def calculate_flow():
 	# give the video camera, don't show the feed
@@ -76,9 +92,16 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
+    # start the opt_flow program
     t = threading.Thread(target=calculate_flow, args=())
     t.daemon = True
     t.start()
+    # make a flag to save a small file with the date
+    # this will be read by central computer 
+    running_flag = threading.Thread(target=running_flag, args=())
+    running_flag.daemon = True
+    running_flag.start()
+    # start the app streaming 
     print("To see feed connect to " + get_ip_address() + ":5000")
     # to do, read ifconfig and assign IP using raspberry's IP
     app.run(host='0.0.0.0', port = 5000, debug=False)
