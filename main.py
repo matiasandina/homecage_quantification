@@ -41,11 +41,13 @@ def running_flag():
 
 	while True:
 		with open('running.txt', "w") as the_file:
-			the_file.write(datetime.datetime.now().isoformat())
+			# because we are using .utcnow() 
+			# dates will be given as UTC (hence you need to transform to your local time)
+			the_file.write(datetime.datetime.utcnow().isoformat())
 		# send IP to choilab
 		cmd_command = "scp ~/homecage_quantification/running.txt choilab@10.93.6.88:~/raspberry_IP/" + mac
 		os.system(cmd_command)
-		# sleep 10 minutes
+		# sleep 1 minutes
 		time.sleep(1 * 60)
 
 
