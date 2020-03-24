@@ -36,7 +36,7 @@ def send_data(date):
 
 	if len(files) > 0:
 		for file in files:
-			# print(file)
+			print(file)
 			cmd_command = "scp " + file + " choilab@10.93.6.88:~/raspberry_IP/" + mac
 			os.system(cmd_command)
 	else:
