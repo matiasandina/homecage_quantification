@@ -1,4 +1,6 @@
 import sensor, image, time, pyb
+from pyb import USB_VCP
+
 def year(datetime):
     return str(datetime[0])
 def month(datetime):
@@ -50,16 +52,10 @@ def write__time(string):
 def decode(binary_string):
     return "".join([chr(char) for char in binary_string])
 
-
-sensor.reset()
-sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QVGA)
-sensor.skip_frames(time = 2000)
-clock = time.clock()
 rtc = pyb.RTC()
-from pyb import USB_VCP
 usb = USB_VCP()
 
+# Blink blue at start
 blink(3)
 pyb.delay(500)
 blink(3)
@@ -68,7 +64,6 @@ blink(3)
 
 while(True):
     pyb.LED(3).on()
-    clock.tick()
     data = usb.read()
     if data != None:
         if len(data) >= 4:
@@ -94,12 +89,44 @@ while(True):
     else:
         continue
 
+## Now we enter Lepton Territory
+
+import sensor, image, time, math
+
+# Color Tracking Thresholds (Grayscale Min, Grayscale Max)
+threshold_list = [(220, 255)]
+
+# Set the target temp range here
+min_temp_in_celsius = 0
+max_temp_in_celsius = 80
+
+print("Resetting Lepton...")
+# These settings are applied on reset
+sensor.reset()
+sensor.ioctl(sensor.IOCTL_LEPTON_SET_MEASUREMENT_MODE, True)
+sensor.ioctl(sensor.IOCTL_LEPTON_SET_MEASUREMENT_RANGE, min_temp_in_celsius, max_temp_in_celsius)
+print("Lepton Res (%dx%d)" % (sensor.ioctl(sensor.IOCTL_LEPTON_GET_WIDTH),
+                              sensor.ioctl(sensor.IOCTL_LEPTON_GET_HEIGHT)))
+print("Radiometry Available: " + ("Yes" if sensor.ioctl(sensor.IOCTL_LEPTON_GET_RADIOMETRY) else "No"))
+
+sensor.set_pixformat(sensor.GRAYSCALE)
+sensor.set_framesize(sensor.QQVGA)
+sensor.skip_frames(time=5000)
+clock = time.clock()
+
+# Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
+# returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
+# camera resolution. "merge=True" merges all overlapping blobs in the image.
 
 while(True):
-    # capture lepton
-    filename = create_filename(rtc.datetime())
+    clock.tick()
     img = sensor.snapshot()
+    for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
+        img.draw_rectangle(blob.rect(), color=127)
+        img.draw_cross(blob.cx(), blob.cy(), color=127)
+    print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
+    # generate filename with stamp
+    filename = create_filename(rtc.datetime())
     img.save(filename)
     # sleep for 1 minute
     pyb.delay(1000 * 60)
-

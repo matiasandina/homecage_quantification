@@ -18,7 +18,7 @@ If using FED3 devices to quantify food intake, go to [this repository](https://g
 1. Code for analysis of FED3 device ([See here](https://github.com/matiasandina/FED_quantification))
 
 
-## Install
+## Install Raspbian on Raspberry Pi
 
 ### Raspbian install
 
