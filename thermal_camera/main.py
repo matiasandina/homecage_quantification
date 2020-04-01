@@ -104,8 +104,10 @@ to_write = str(min_temp_in_celsius) + " " + str(max_temp_in_celsius)
 
 # write the parameters we are using to file
 txt = create_filename(rtc.datetime(), ext=".txt")
-with open(txt, 'w') as the_file:
-    the_file.writelines(to_write)
+gg=open(txt,'w')
+gg.write(to_write)
+gg.close()
+
 
 
 print("Resetting Lepton...")
