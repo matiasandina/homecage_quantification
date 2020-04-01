@@ -97,8 +97,16 @@ import sensor, image, time, math
 threshold_list = [(220, 255)]
 
 # Set the target temp range here
-min_temp_in_celsius = 0
-max_temp_in_celsius = 80
+min_temp_in_celsius = 10
+max_temp_in_celsius = 40
+
+to_write = str(min_temp_in_celsius) + " " + str(max_temp_in_celsius)
+
+# write the parameters we are using to file
+txt = create_filename(rtc.datetime(), ext=".txt")
+with open(txt, 'w') as the_file:
+    the_file.writelines(to_write)
+
 
 print("Resetting Lepton...")
 # These settings are applied on reset
