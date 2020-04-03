@@ -39,6 +39,7 @@ while(True):
 
 	# manage exit
 	retry_num = retry_num + 1
-	if (retry_num > 100):
-		print("Tried too many times, check connection and restart script from console.")
+	if (retry_num > 20):
+		print("Tried to start 20 times, thermal camera should be running.")
+		pirnt("If you didn't see start signal on the board,  check connection and restart script from console.")
 		break
