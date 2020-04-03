@@ -8,34 +8,38 @@ from collections import deque
 import datetime
 import os
 
-def exit_handler(iter_number, timestamp, mag_deque, maxlen, filename):
+def exit_handler(iter_number, timestamp_deque, mag_deque, maxlen, filename):
     print('Application is ending')
     print('Calling save_deque()')
     # save all deques
-    save_deque(iter_number, timestamp, mag_deque, maxlen, filename) 
+    save_deque(iter_number, timestamp_deque, mag_deque, maxlen, filename) 
     cv2.destroyAllWindows()
 
 
-def save_deque(iter_number, timestamp, deque_to_save, maxlen, filename):
+def save_deque(iter_number, timestamp_deque, deque_to_save, maxlen, filename):
 
     # iter_number[-1] is the last iteration if deque... here iternumber is an int
     # we could also do max(iter_number)
 
     unsaved_elements = iter_number % maxlen
-
+    
     if (unsaved_elements == 0):
         print("Saving " + filename + " on iteration..." + str(iter_number))
+        # array with timestamp and deque to save, transpose for having them as cols
+        d = np.array([timestamp_deque, deque_to_save]).T
         with open(filename,'a') as outfile:
-            np.savetxt(outfile, deque_to_save,
+            np.savetxt(outfile, d,
             delimiter=',', fmt='%s')
 
     else:
         # convert to list and slice the last unsaved elements
         print("Saving rest of " + filename )
+        timestamp_rest = list(timestamp_deque)[-unsaved_elements:]
         rest = list(deque_to_save)[-unsaved_elements:]
+        d_rest = np.array([timestamp_rest, rest]).T
         # Here we only save the rest 
         with open(filename,'a') as outfile:
-            np.savetxt(outfile, rest,
+            np.savetxt(outfile, d_rest,
             delimiter=',', fmt='%s')
     return
 
@@ -44,6 +48,7 @@ def opt_flow(cap, show_video, filename):
     # buffer size for keeping RAM smooth 
     maxlen = 1000
     mag_deque = deque(maxlen=maxlen)
+    timestamp_deque = deque(maxlen=maxlen)
 
     # grab the current frame
     frame1 = cap.read()
@@ -65,6 +70,7 @@ def opt_flow(cap, show_video, filename):
     while(1):
         # get timestamp
         timestamp = datetime.datetime.now().isoformat(" ")
+        timestamp_deque.append(timestamp)
         frame2 = cap.read()
         # if we are viewing a video and we did not grab a frame,
         # then we have reached the end of the video
@@ -142,10 +148,10 @@ def opt_flow(cap, show_video, filename):
         prev = gray
         unsaved_elements = iter_number % maxlen
         if (unsaved_elements == 0):
-            save_deque(iter_number, timestamp, mag_deque, maxlen, filename)
+            save_deque(iter_number, timestamp_deque, mag_deque, maxlen, filename)
         iter_number = iter_number + 1
 
-    exit_handler(iter_number, timestamp, mag_deque, maxlen, filename)
+    exit_handler(iter_number, timestamp_deque, mag_deque, maxlen, filename)
     return mag_deque
 
 
