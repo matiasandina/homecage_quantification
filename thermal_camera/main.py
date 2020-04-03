@@ -138,5 +138,7 @@ while(True):
     # generate filename with stamp
     filename = create_filename(rtc.datetime())
     img.save(filename)
-    # sleep for 1 minute
-    pyb.delay(1000 * 60)
+    # blink RED LED, sleep for 1 minute
+    blink(1, sleep_time=300)
+    # account for the 300 ms of blink delay
+    pyb.delay(1000 * 60 - 300)
