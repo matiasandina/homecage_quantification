@@ -33,23 +33,13 @@ def send_data(date):
 	# replace "\n" coming from readline()
 	mac = mac.replace("\n", "")
 
+	# get the .jpg
 	cmd_command = "rsync -avzhe ssh /media/pi/*/" + date + "*.jpg choilab@10.93.6.88:~/raspberry_IP/" + mac
 	os.system(cmd_command)
+	# get the .txt
+	cmd_command = "rsync -avzhe ssh /media/pi/*/" + date + "*.txt choilab@10.93.6.88:~/raspberry_IP/" + mac
+	os.system(cmd_command)
 
-	# figure out date
-	# ls all files with the particular date
-	#files = listdir_fullpath("/media/pi/",
-	#	file_pattern=date,
-	#	file_extension=".jpg")
-
-	#if len(files) > 0:
-	#	for file in files:
-	#		print(file)
-	#		cmd_command = "rsync -avzhe ssh /media/pi/*/*.jpg choilab@10.93.6.88:~/raspberry_IP/" + mac
-	#		os.system(cmd_command)
-	#else:
-	#	# some sort of warning here
-	#	return()
 
 	
 if __name__ == '__main__':
