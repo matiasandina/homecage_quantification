@@ -34,14 +34,12 @@ def send_data(date):
 	mac = mac.replace("\n", "")
 
 	# get the .jpg
-	# include every folder
-	# include everything matching _template
-	# exclude everything else
+	cmd_command = "find /media/pi -name " + date + "*\.jpg | rsync -av --files-from - --no-relative . ssh " + "choilab@10.93.6.88:~/raspberry_IP/" + mac
 	
-	cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*jpg*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
+	#cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*jpg*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
 	os.system(cmd_command)
 	# get the .txt
-	cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*txt*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
+	#cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*txt*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
 	os.system(cmd_command)
 
 
