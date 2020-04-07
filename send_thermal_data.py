@@ -32,16 +32,23 @@ def send_data(date):
 	mac = open('/sys/class/net/wlan0/address').readline()
 	# replace "\n" coming from readline()
 	mac = mac.replace("\n", "")
-
-	# get the .jpg
-	cmd_command = "find /media/pi -name " + date + "*\.jpg | rsync -av --files-from - --no-relative . ssh " + "choilab@10.93.6.88:~/raspberry_IP/" + mac
 	
-	#cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*jpg*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
-	os.system(cmd_command)
-	# get the .txt
-	#cmd_command = "rsync -avzhe --include '*/' --include='*" + date +"'*" + "--include='*txt*' --exclude='*' ssh /media/pi/ choilab@10.93.6.88:~/raspberry_IP/" + mac
-	os.system(cmd_command)
 
+	# get the .jpg files
+	# get the .txt files
+	os.system("find /media/pi -name " + date + "*jpg > /home/pi/jpg_list.txt")
+	os.system("find /media/pi -name " + date + "*txt > /home/pi/txt_list.txt")
+        # send them
+	cmd_command = "rsync -av --no-relative --files-from=/home/pi/jpg_list.txt / choilab@10.93.6.88:~/raspberry_IP/" + mac
+	os.system(cmd_command)
+	cmd_command = "rsync -av --no-relative --files-from=/home/pi/txt_list.txt / choilab@10.93.6.88:~/raspberry_IP/" + mac
+	os.system(cmd_command)
+	# clean temp files
+	os.remove("/home/pi/jpg_list.txt")
+	os.remove("/home/pi/txt_list.txt")
+
+
+#
 
 	
 if __name__ == '__main__':
