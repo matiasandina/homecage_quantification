@@ -34,10 +34,10 @@ def send_data(date):
 	mac = mac.replace("\n", "")
 
 	# get the .jpg
-	cmd_command = "rsync -avzhe ssh /media/pi/*/" + date + "*.jpg choilab@10.93.6.88:~/raspberry_IP/" + mac
+	cmd_command = "rsync -avzher ssh /media/pi/*/" + date + "*.jpg choilab@10.93.6.88:~/raspberry_IP/" + mac
 	os.system(cmd_command)
 	# get the .txt
-	cmd_command = "rsync -avzhe ssh /media/pi/*/" + date + "*.txt choilab@10.93.6.88:~/raspberry_IP/" + mac
+	cmd_command = "rsync -avzher ssh /media/pi/*/" + date + "*.txt choilab@10.93.6.88:~/raspberry_IP/" + mac
 	os.system(cmd_command)
 
 
