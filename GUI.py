@@ -35,15 +35,15 @@ class App():
 
 	# button callbacks ------
 	def start_thermal(self):
-		os.system("python3 /home/choilab/homecage_quantification/start_thermal.py")
+		os.system("python3 /home/pi/homecage_quantification/start_thermal.py")
 
 	def preview_camera(self):
-		os.system("python3 /home/choilab/homecage_quantification/preview_camera.py")
+		os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
 		# only now we enable the experiment button
 		self.exp_button.config(state="normal") 
 
 	def start_experiment(self):
-		os.system("python3 /home/choilab/homecage_quantification/main.py")
+		os.system("python3 /home/pi/homecage_quantification/main.py")
 
 
 	def on_closing(self):
