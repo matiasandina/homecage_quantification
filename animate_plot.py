@@ -7,6 +7,7 @@ import cv2
 import imutils
 from imutils.video import FileVideoStream
 import time
+import argparse
 
 def grab_frame(cap):
     frame = cap.read()
@@ -25,33 +26,45 @@ def update(frame):
     im2.set_data(grab_frame(cap))
     time.sleep(1/30)
     ax1.set_xlim(frame - 200, frame + 100)
-
     return ln, im2
 
+# things to run from command line
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-video", "--video", required=True,
+    help="path to video")
+    ap.add_argument("-data", "--data", 
+        required=True, 
+        help="path to data")
+    args = vars(ap.parse_args())
 
-df = pd.read_csv('mag_deque.csv', header = None)
-df = np.array(df)
-# accumulate distance
-#df = np.cumsum(df)
+    
+    df = pd.read_csv(args["data"])
+    # rename the opt_flow output to have second column named flow
+    # will fail if you don't do this manually
+    df = np.array(df["flow"])
+    # accumulate distance
+    #df = np.cumsum(df)
 
-# camera
-cap = FileVideoStream("Trial1.mpg").start()
+    # camera
+    cap = FileVideoStream(args["video"]).start()
 
-# fig, ax = plt.subplots()
-xdata, ydata = [], []
-
-
-#create two subplots
-ax1 = plt.subplot(2,1,1)
-ln, = plt.plot([], [], color=(0,0,1))
-
-#create two image plots
-ax2 = plt.subplot(2,1,2)
-im2 = ax2.imshow(grab_frame(cap))
+    # fig, ax = plt.subplots()
+    xdata, ydata = [], []
 
 
+    #create two subplots
+    ax1 = plt.subplot(2,1,1)
+    ln, = plt.plot([], [], color=(0,0,1))
 
-ani = FuncAnimation(plt.gcf(), update, interval=1,
-                    init_func=init, blit=False)
+    #create two image plots
+    ax2 = plt.subplot(2,1,2)
+    im2 = ax2.imshow(grab_frame(cap))
 
-plt.show()
+
+
+    ani = FuncAnimation(plt.gcf(), update, interval=1,
+                        init_func=init, blit=False)
+
+    plt.show()
+
