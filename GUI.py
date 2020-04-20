@@ -1,6 +1,8 @@
 import tkinter
 from tkinter import messagebox as tkMessageBox
 import os
+import pandas as pd
+import numpy as np
 
 
 class App():
@@ -49,6 +51,7 @@ class App():
 	def on_closing(self):
 		if tkMessageBox.askyesno("Quit", "Do you want to quit?"):
 			self.window.destroy()
+
 
 
 def create_app(root):
