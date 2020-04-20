@@ -55,11 +55,8 @@ def calculate_flow():
 	# give the video camera, don't show the feed
 	# opt_flow already has a while loop
 	# opt_flow handles saving data
-	filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "_opt_flow.csv"
+	filename = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "_opt_flow.csv"
 	movement = opt_flow(video_camera, True, filename = filename)
-
-	# TODO: add device info here
-
 
 def get_ip_address(remote_server="google.com"):
 	"""
@@ -68,11 +65,6 @@ def get_ip_address(remote_server="google.com"):
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s: 
 		s.connect((remote_server, 80))
 		return s.getsockname()[0]
-
-# def config_raspberry():
-	# TODO
-	# ifconfig
-	# modify html template
 
 @app.route('/')
 @basic_auth.required

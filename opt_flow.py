@@ -169,7 +169,7 @@ if __name__ == '__main__':
     if args["source"] == "webcam":
         # we are using the webcam 0...might create problems
         cap = imutils.video.VideoStream(src=0).start()
-        filename = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + "_opt_flow.csv"
+        filename = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "_opt_flow.csv"
         opt_flow(cap, show_video = args["show_video"], filename = filename)
     else:
         # all hell can break lose here but whatever
