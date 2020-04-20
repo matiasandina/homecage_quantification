@@ -131,10 +131,12 @@ clock = time.clock()
 while(True):
     clock.tick()
     img = sensor.snapshot()
-    for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
-        img.draw_rectangle(blob.rect(), color=127)
-        img.draw_cross(blob.cx(), blob.cy(), color=127)
-    print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
+
+    #for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
+    #    img.draw_rectangle(blob.rect(), color=127)
+    #    img.draw_cross(blob.cx(), blob.cy(), color=127)
+    #print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
+    
     # generate filename with stamp
     filename = create_filename(rtc.datetime())
     img.save(filename)
