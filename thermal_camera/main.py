@@ -142,5 +142,9 @@ while(True):
     img.save(filename)
     # blink RED LED, sleep for 1 minute
     blink(1, sleep_time=300)
-    # account for the 300 ms of blink delay
+    # turn infrared lights if it's dark
+    pyb.LED(4).on()
+    # delay account for the 300 ms of blink delay
     pyb.delay(1000 * 60 - 300)
+    # turn off so we can take thermal image
+    pyb.LED(4).off()
