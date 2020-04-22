@@ -44,11 +44,42 @@ def save_deque(iter_number, timestamp_deque, deque_to_save, maxlen, filename):
     return
 
 
+def get_centroid(mask):
+    kernel = np.ones((5, 5), np.uint8)
+    # Do some erosion-dilation to clear noise
+    mask = cv2.erode(mask, kernel, iterations=2)
+    mask = cv2.dilate(mask, kernel, iterations=2)
+
+    # Fill holes inside of mask, we will close them
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+    # find contours in the mask and initialize the current
+    # (x, y) center of the ball
+    cnts = cv2.findContours(mask.copy(),
+                            cv2.RETR_EXTERNAL,
+                            cv2.CHAIN_APPROX_SIMPLE)
+
+    # This is a function that checks the length of contours
+    # it is related to the opencv version we are using
+
+    cnts = imutils.grab_contours(cnts)
+
+    # mouse center
+    if len(cnts)>0:
+        c = max(cnts, key=cv2.contourArea)
+        # ((x, y), radius) = cv2.minEnclosingCircle(c)
+        M = cv2.moments(c)
+        mouse_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+        return mouse_center
+    else:
+        return None
+
 def opt_flow(cap, show_video, filename):
     # buffer size for keeping RAM smooth 
     maxlen = 1000
     mag_deque = deque(maxlen=maxlen)
     timestamp_deque = deque(maxlen=maxlen)
+    xy_deque = deque(maxlen=maxlen)
 
     # grab the current frame
     frame1 = cap.read()
@@ -108,14 +139,27 @@ def opt_flow(cap, show_video, filename):
         sum_mag = np.sum(mag)
         mag_deque.append(sum_mag)
 
+        # if there's enough movement
+        if sum_mag > 1000:        
+           # if mag is 1 for any pixel looks like real movement
+           # try to calculate mask and centroid
+           # calculate the mask as cv2 likes it
+           mask = np.array((mag>1)*255).astype('uint8')
+           xy = get_centroid(mask)
+           xy_deque.append(xy)
+        else:
+            xy_deque.append(None)
+
+
         if (show_video):
             # Direction/angle goes into hue (first channel)
             hsv[...,0] = ang*180/np.pi/2
             # magnitude goes into value (third channel)
-            # We normalize to be able to see...math for data will use the mag object  
+            # We normalize to be able to see...
+            # Because this distorts values, all data analysis will use the mag object  
             hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
             bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)    
-
+            
             #bgr_blur = cv2.medianBlur(bgr, 5)
             #bgr_blur[bgr_blur < 50]  = 0 
             # put text for the total movement
@@ -127,7 +171,16 @@ def opt_flow(cap, show_video, filename):
             1)    
             cv2.imshow('frame2',bgr)
             cv2.imshow('original', gray)
-            #cv2.imshow('blurr', bgr_blur)    
+            #cv2.imshow('blurr', bgr_blur)
+            if mask is not None:
+                show_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                if xy is not None:
+                    cv2.circle(show_mask, xy,
+                       5,  # a very small circle
+                       (0, 0, 255),  # red
+                       -1)  # Negative thickness means that a filled circle is to be drawn.
+                cv2.imshow('mask', show_mask)
+
 
             k = cv2.waitKey(1) & 0xff
             if k == 27:
