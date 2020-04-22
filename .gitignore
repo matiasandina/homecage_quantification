@@ -9,3 +9,7 @@ __pycache__
 
 # ip files that end _ip.txt
 *_ip.txt
+
+# Videos on QC videos folder
+QC/open_field/videos/
+QC/homecage/videos/
