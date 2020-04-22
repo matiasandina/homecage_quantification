@@ -67,7 +67,7 @@ def opt_flow(cap, show_video, filename):
     # create_iteration number
     iter_number = 0
 
-    while(1):
+    while(True):
         # get timestamp
         timestamp = datetime.datetime.now().isoformat(" ")
         timestamp_deque.append(timestamp)
@@ -105,27 +105,26 @@ def opt_flow(cap, show_video, filename):
         # We can always do this afterwards but visual normalization might need it
         #mag = mag * mag
         # np.median is probably less noisy but it misses a lot of movement
-        mag_deque.append(np.sum(mag))
+        sum_mag = np.sum(mag)
+        mag_deque.append(sum_mag)
 
-        # Direction/angle goes into hue (first channel)
-        hsv[...,0] = ang*180/np.pi/2
-        # magnitude goes into value (third channel)
-        # We normalize to be able to see...math for data will use the mag object  
-        hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
-        bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)    
+        if (show_video):
+            # Direction/angle goes into hue (first channel)
+            hsv[...,0] = ang*180/np.pi/2
+            # magnitude goes into value (third channel)
+            # We normalize to be able to see...math for data will use the mag object  
+            hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+            bgr = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)    
 
-        #bgr_blur = cv2.medianBlur(bgr, 5)
-        #bgr_blur[bgr_blur < 50]  = 0    
-
-       
-        cv2.putText(bgr, "total mov: " + str(round(np.sum(mag),2)), 
+            #bgr_blur = cv2.medianBlur(bgr, 5)
+            #bgr_blur[bgr_blur < 50]  = 0 
+            # put text for the total movement
+            cv2.putText(bgr, "total mov: " + str(round(sum_mag,2)), 
             (10, 20), 
             cv2.FONT_HERSHEY_SIMPLEX, 
             1,
             (255,255,255),
             1)    
-
-        if (show_video):
             cv2.imshow('frame2',bgr)
             cv2.imshow('original', gray)
             #cv2.imshow('blurr', bgr_blur)    
@@ -133,14 +132,14 @@ def opt_flow(cap, show_video, filename):
             k = cv2.waitKey(1) & 0xff
             if k == 27:
                 break
-            elif k == ord('s'):
-                with open('mag_deque.csv','a') as outfile:
-                    np.savetxt(outfile, mag_deque,
-                    delimiter=',', fmt='%s')
+            # possiblilty to save via command
+            #elif k == ord('s'):
+            #    with open('mag_deque.csv','a') as outfile:
+            #        np.savetxt(outfile, mag_deque,
+            #        delimiter=',', fmt='%s')
         else:
             # if we don't give any feedback it's difficult to know
-            print("opt_flow.py Iteration: " + str(iter_number) + " " +
-             "Total movement: " + str(np.sum(mag)),
+            print('opt_flow.py Iteration: {} Total movement: {}'.format(iter_number, sum_mag),
               end = "\r")
 
         # Clean-up
