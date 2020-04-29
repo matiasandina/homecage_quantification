@@ -10,12 +10,28 @@ import pandas as pd
 import os
 import itertools
 from ast import literal_eval
+import datetime
+
+def exit_handler(filename, iteration_number):
+    print('Application is ending')
+    print('Calling save_data()')
+    # save all deques
+    save_data(filename, iteration_number) 
+    cv2.destroyAllWindows()
 
 # Helper to Save the thing
-def save_data(filename):
-	with open(filename,'a') as outfile:
-		np.savetxt(outfile, mouse_pts,
-		delimiter=',', fmt='%s')
+def save_data(filename, iteration_number):
+	maxlen = args["buffer"]
+	unsaved_elements = iteration_number % maxlen 
+	if (iteration_number % maxlen == 0):
+		with open(filename,'a') as outfile:
+			np.savetxt(outfile, mouse_pts,
+			delimiter=',', fmt='%s')
+	else:
+		rest = list(mouse_pts)[-unsaved_elements:]
+		with open(filename,'a') as outfile:
+			np.savetxt(outfile, rest,
+			delimiter=',', fmt='%s')
 
 # Helper to parse arguments
 # construct the argument parse and parse the arguments
@@ -66,17 +82,23 @@ mouse_pts = deque(maxlen=args["buffer"])
 # to the webcam
 if not args.get("video", False):
 	vs = VideoStream(src=0).start()
+	# set the filename
+	filename = datetime.datetime.now().isoformat("T") + "_VideoStream" + "_mouse_track.csv"
 
 # otherwise, grab a reference to the video file
 else:
 	vs = cv2.VideoCapture(args["video"])
 	# We will save a file with time as id
+	filename = os.path.splitext(os.path.basename(args["video"]))[0]
+	filename = filename + "_mouse_track.csv"
 
 # Get number of frames ?
 # video_length = int(vs.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
 
 # allow the camera or video file to warm up
 time.sleep(2.0)
+
+
 
 # set the counters
 iteration_number = 1
@@ -93,6 +115,7 @@ while True:
 	# if we are viewing a video and we did not grab a frame,
 	# then we have reached the end of the video
 	if frame is None:
+		exit_handler(filename, iteration_number)
 		break
 
 	# resize the frame, blur it, and convert it to the HSV
@@ -171,9 +194,9 @@ while True:
 	# Wait until the iteration number is divisible by the buffer length
 	if (iteration_number % args["buffer"] == 0):
 		last_saved = iteration_number
-		print("Saving on iteration..." + str(last_saved))
+		print("Saving on iteration..." + str(last_saved), end = "\r")
 		# Call helper to save
-		save_data('mouse_track.csv')
+		save_data(filename, iteration_number)
 
 	# Add if statement to avoid showing videos for efficiency
 	# show the videos to our screen
