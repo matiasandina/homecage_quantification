@@ -8,15 +8,15 @@ from collections import deque
 import datetime
 import os
 
-def exit_handler(iter_number, timestamp_deque, mag_deque, maxlen, filename):
+def exit_handler(iter_number, timestamp_deque, mag_deque, xy, maxlen, filename):
     print('Application is ending')
     print('Calling save_deque()')
     # save all deques
-    save_deque(iter_number, timestamp_deque, mag_deque, maxlen, filename) 
+    save_deque(iter_number, timestamp_deque, mag_deque, xy, maxlen, filename) 
     cv2.destroyAllWindows()
 
 
-def save_deque(iter_number, timestamp_deque, deque_to_save, maxlen, filename):
+def save_deque(iter_number, timestamp_deque, deque_to_save, xy, maxlen, filename):
 
     # iter_number[-1] is the last iteration if deque... here iternumber is an int
     # we could also do max(iter_number)
@@ -26,7 +26,7 @@ def save_deque(iter_number, timestamp_deque, deque_to_save, maxlen, filename):
     if (unsaved_elements == 0):
         print("Saving " + filename + " on iteration..." + str(iter_number))
         # array with timestamp and deque to save, transpose for having them as cols
-        d = np.array([timestamp_deque, deque_to_save]).T
+        d = np.array([timestamp_deque, deque_to_save, xy]).T
         with open(filename,'a') as outfile:
             np.savetxt(outfile, d,
             delimiter=',', fmt='%s')
@@ -36,7 +36,8 @@ def save_deque(iter_number, timestamp_deque, deque_to_save, maxlen, filename):
         print("Saving rest of " + filename )
         timestamp_rest = list(timestamp_deque)[-unsaved_elements:]
         rest = list(deque_to_save)[-unsaved_elements:]
-        d_rest = np.array([timestamp_rest, rest]).T
+        xy_rest = list(xy)[-unsaved_elements:]
+        d_rest = np.array([timestamp_rest, rest, xy_rest]).T
         # Here we only save the rest 
         with open(filename,'a') as outfile:
             np.savetxt(outfile, d_rest,
@@ -83,9 +84,14 @@ def opt_flow(cap, show_video, filename):
 
     # grab the current frame
     frame1 = cap.read()
+    # images will come as
+    # (h, w, channels)
+    original_width = frame1.shape[1]
+    # resize_width for ease of computation
+    resize_width = 320
 
     # reduce size
-    frame1 = imutils.resize(frame1, width=320)
+    frame1 = imutils.resize(frame1, width=resize_width)
 
     # ret, frame1 = cap.read()
     # Grayscale
@@ -110,7 +116,7 @@ def opt_flow(cap, show_video, filename):
             break
 
         # reduce the frame so that we speed up computation
-        frame2 = imutils.resize(frame2, width=320)
+        frame2 = imutils.resize(frame2, width=resize_width)
 
         gray = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -146,6 +152,11 @@ def opt_flow(cap, show_video, filename):
            # calculate the mask as cv2 likes it
            mask = np.array((mag>1)*255).astype('uint8')
            xy = get_centroid(mask)
+           # xy will be a tupple
+           # we need to adjust with resize factor
+           # the way to keep it tupple is with tuple and list comprehension
+           if xy is not None:
+               xy = tuple([int(value * original_width/resize_width) for value in xy])
            xy_deque.append(xy)
         else:
             xy_deque.append(None)
@@ -175,7 +186,9 @@ def opt_flow(cap, show_video, filename):
             if mask is not None:
                 show_mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
                 if xy is not None:
-                    cv2.circle(show_mask, xy,
+                    # we need to correct back for the resizing to show
+                    xy_show = tuple([int(value * resize_width/original_width) for value in xy])
+                    cv2.circle(show_mask, xy_show,
                        5,  # a very small circle
                        (0, 0, 255),  # red
                        -1)  # Negative thickness means that a filled circle is to be drawn.
@@ -200,10 +213,10 @@ def opt_flow(cap, show_video, filename):
         prev = gray
         unsaved_elements = iter_number % maxlen
         if (unsaved_elements == 0):
-            save_deque(iter_number, timestamp_deque, mag_deque, maxlen, filename)
+            save_deque(iter_number, timestamp_deque, mag_deque, xy_deque, maxlen, filename)
         iter_number = iter_number + 1
 
-    exit_handler(iter_number, timestamp_deque, mag_deque, maxlen, filename)
+    exit_handler(iter_number, timestamp_deque, mag_deque, xy_deque, maxlen, filename)
     return mag_deque
 
 
