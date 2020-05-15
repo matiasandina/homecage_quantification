@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Comment=openmvIDE
+Name=openmvIDE
+Exec=/home/pi/openmvide/bin/openmvide.sh
+Icon=/home/pi/openmvide/openmv-logo.jpg
+Terminal=false
+Categories=Utility
+StartupNotify=true

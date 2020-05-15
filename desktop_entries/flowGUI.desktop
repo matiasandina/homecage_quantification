@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Comment=flowGUI
+Name=flowGUI
+Exec=/home/pi/homecage_quantification/GUI.py
+Icon=/home/pi/homecage_quantification/flow_logo.png
+Terminal=false
+Categories=Utility
+StartupNotify=true

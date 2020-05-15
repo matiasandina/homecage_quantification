@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Comment=HomecageApp
+Name=HomecageApp
+Exec=/usr/bin/Rscript -e "shiny::runApp('~/raspberry_IP/app.R', launch.browser=TRUE)"
+Icon=/home/choilab/homecage_quantification/docs_img/rpi_logo.png
+Terminal=false
+Categories=Utility
+StartupNotify=true
