@@ -2,8 +2,8 @@
 Type=Application
 Comment=flowGUI
 Name=flowGUI
-Exec=/home/pi/homecage_quantification/GUI.py
-Icon=/home/pi/homecage_quantification/flow_logo.png
-Terminal=false
+Exec=python3 /home/pi/homecage_quantification/GUI.py
+Icon=/home/pi/homecage_quantification/docs_img/flow_logo.png
+Terminal=true
 Categories=Utility
 StartupNotify=true
