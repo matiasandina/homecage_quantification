@@ -141,10 +141,12 @@ while(True):
     filename = create_filename(rtc.datetime())
     img.save(filename)
     # blink RED LED, sleep for 1 minute
-    blink(1, sleep_time=300)
+    blink(1, sleep_time=500)
+    # blink RED LED, sleep for 1 minute
+    blink(1, sleep_time=500)
     # turn infrared lights if it's dark
     pyb.LED(4).on()
-    # delay account for the 300 ms of blink delay
-    pyb.delay(1000 * 60 - 300)
+    # delay account for the 2*500 ms of blink delay
+    pyb.delay(1000 * 60 - 1000)
     # turn off so we can take thermal image
     pyb.LED(4).off()
