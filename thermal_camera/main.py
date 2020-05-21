@@ -123,6 +123,8 @@ sensor.set_pixformat(sensor.GRAYSCALE)
 sensor.set_framesize(sensor.QQVGA)
 sensor.skip_frames(time=5000)
 clock = time.clock()
+# sampling frequency in min
+sampling_freq = 30
 
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
 # returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
@@ -147,6 +149,6 @@ while(True):
     # turn infrared lights if it's dark
     pyb.LED(4).on()
     # delay account for the 2*500 ms of blink delay
-    pyb.delay(1000 * 60 - 1000)
+    pyb.delay(1000 * sampling_freq - 1000)
     # turn off so we can take thermal image
     pyb.LED(4).off()
