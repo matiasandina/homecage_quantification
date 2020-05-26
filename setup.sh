@@ -13,6 +13,8 @@ sudo sh -c "echo 'hdmi_force_hotplug=1' >> /boot/config.txt"
 sudo sh -c "echo 'hdmi_group=2' >> /boot/config.txt"
 sudo sh -c "echo 'hdmi_mode=82' >> /boot/config.txt"
 
+# Make desktop entry for flowGUI
+cp /home/pi/homecage_quantification/desktop_entries/flowGUI.desktop  /home/pi/Desktop/flowGUI.desktop
 
 # install requirements for opencv
 sudo apt-get install libhdf5-dev -y
