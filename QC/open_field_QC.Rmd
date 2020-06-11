@@ -1,0 +1,704 @@
+---
+title: "Open Field QC"
+author: "Matias Andina"
+date: "4/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment=NA)
+library(tidyverse)
+library(cowplot)
+library(RColorBrewer)
+library(DiagrammeR)
+```
+
+## Open field quantification
+
+We will take data coming from different Open Field trials and quantify using:
+
+* Optical Flow
+* HSV transform (Ethovision-like way)
+* DeepLabCut
+
+We will also develop a tracking method from optic flow to get xy position for the mice. We will compare methods.
+
+```{r, eval=FALSE, results='hide'}
+
+# THIS TAKES A LONG TIME TO RUN ------------
+# USING DATA ALREADY SAVED -----------------
+  
+
+fix_path <- function(x){
+  x <- gsub(x, pattern="(", replacement = "\\(", fixed = TRUE)
+  x <- gsub(x, pattern=")", replacement = "\\)", fixed = TRUE)
+  x <- gsub(x, pattern=" ", replacement = "\\ ", fixed = TRUE)
+  return(x)
+}
+
+# there might be spaces and () here...
+root_path <- fix_path(getwd())
+
+files <- list.files("open_field/videos/", pattern = '.mpg', full.names = TRUE)
+# make full path
+files <- file.path(root_path, files)
+
+# place for storing timing
+timing <- list(HSV=NULL, flow=NULL)
+
+# getwd() is within QC folder
+# but opt_flow is on homecage folder so we need to do ".."
+hsv_script <- file.path(root_path, "track_centroid.py")
+flow_script <- file.path(str_remove(root_path, "/QC"), "opt_flow.py")
+# enter for loop for timing
+for (file in files){
+  # generate first python command
+  python_command <- paste("python3",
+                          hsv_script,
+                          "-v", file,
+        "-blackLower",
+        shQuote("(0,0,0)"),
+        "-blackUpper",
+        shQuote("(255,255,50)"))
+
+  # call track centroid
+  t0_hsv <- Sys.time()
+  system(python_command)
+  # store elapsed time
+  timing$HSV[basename(file)] <- as.numeric(difftime(Sys.time(),
+                                         t0_hsv, units = "sec"))
+  
+  # ---
+  python_command <- paste("python3",
+                          flow_script,
+                          " -source", file)
+  t0_flow <- Sys.time()
+  system(python_command)
+  timing$flow[basename(file)] <- as.numeric(difftime(Sys.time(),
+                                         t0_flow, units = "sec"))
+  
+}
+```
+
+```{r save-computation-time, eval=FALSE, message=FALSE}
+
+# This will fail when we don't have the timing object
+# for reproduction previously calculated values are used
+
+new_names <- c("filename", names(timing))
+
+time_df <- purrr::map(timing, function(x) as.data.frame(x) %>%
+             rownames_to_column()) %>%
+  reduce(left_join, by = "rowname")
+
+names(time_df) <- new_names
+
+# names are in place, now pivot long
+time_df <- time_df %>%
+  pivot_longer(-filename,
+               names_to = "method",
+               values_to = "time")
+
+write.csv(x = time_df, "hsv_flow_timing.csv", row.names = FALSE)
+```
+
+## Import pre-calculated data
+
+```{r read-quant, message=FALSE, warning=F}
+# hsv ------------
+HSV_files <- list.files(path="open_field/results/", 
+           pattern="_track.csv", full.names = TRUE)
+HSV_df <- purrr::map(HSV_files,
+          function(x)
+          read_csv(x, col_names = c("x", "y"))) 
+
+names(HSV_df) <- basename(HSV_files)
+HSV_df <- HSV_df %>% bind_rows(.id="filename")
+ 
+# flow --------------
+
+flow_files <- list.files(path="open_field/results/", 
+           pattern="flow.csv", full.names = TRUE)
+flow_df <- purrr::map(flow_files,
+          function(x)
+          read_delim(x,
+                     delim=",",
+                     col_names = c("datetime", "movement", "x", "y")))
+
+names(flow_df) <- basename(flow_files)
+flow_df <- flow_df %>% bind_rows(.id="filename")
+
+# clean
+flow_df <- flow_df %>% 
+  mutate(x = as.numeric(str_extract(x, "[0-9]+")),
+         y = as.numeric(str_extract(y, "[0-9]+")))
+
+```
+
+```{r glimpse-data}
+glimpse(flow_df)
+```
+
+```{r}
+DiagrammeR::mermaid(
+  "graph LR
+  video --> flow
+  video --> HSV
+  video --> DLC
+  DLC --> Correlate
+  flow --> flow_Movement
+  flow --> flow_XY
+  HSV -->|Read| px_movement_HSV
+  px_movement_HSV --> Correlate
+  flow_Movement -->|Read| Correlate
+  flow_XY -->|Read| Smooth
+  Smooth --> px_movement_flow
+  px_movement_flow --> Correlate
+  "
+)
+```
+
+
+## Smoothing
+
+This step also involves interpolation in the case that there are missing values on the data. 
+
+```{r smooth, echo = FALSE}
+median_filter <- function(x){
+  x <- runmed(x, 11, na.action = "na.omit", endrule = "keep")
+  # this is to fill NAs 
+  # do not remove na values when approx
+  # if the NA are at the edges extend the closest values
+  x <- zoo::na.approx(x, na.rm=F, rule=2)
+  return(x)
+}
+
+flow_df <- flow_df %>%
+  group_by(filename) %>%
+  # interpolated xy
+  mutate(i_x = median_filter(x),
+         i_y = median_filter(y))
+
+# check there's no more NAs
+if (nrow(filter(flow_df, is.na(i_x))) == 0){
+  print("Data was interpolated and no more NAs are present")
+} else {
+  print("There are still NAs present on the data")
+}
+```
+
+## Check interpolation
+
+We visualy inspect the smoothing/interpolation process.
+
+```{r check-interp}
+check_interpolation <- function(df, trial){
+  f <- filter(df, filename==trial)
+  
+  p1 <- ggplot(f, aes(x,y))+
+        geom_path() +
+        ggtitle("Original")
+  p2 <- ggplot(f, aes(i_x, i_y))+
+        geom_path()+
+        ggtitle("Interpolated")
+  title <- ggdraw() + 
+  draw_label(
+    trial,
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  )+
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+  
+  plot_row <- plot_grid(p1, p2)
+  
+  return(plot_grid(title, plot_row, ncol=1,
+                   rel_heights = c(0.1, 1)))
+}
+```
+
+
+```{r, warning=FALSE, cache=TRUE}
+trial_interp <- lapply(unique(flow_df$filename),
+       function(x) check_interpolation(flow_df, x))
+```
+
+```{r inspect-interpolation, cache=TRUE}
+for (p in trial_interp){print(p)}
+```
+
+
+```{r path-multiplot}
+path_multiplot <- function(HSV_df, flow_df, trial){
+  p1 <- filter(flow_df, str_detect(filename, trial)) %>%
+  ggplot(aes(i_x,i_y)) +
+  geom_path()+
+  ggtitle("Interpolated flow")
+
+  p2 <- filter(HSV_df, str_detect(filename, trial)) %>%
+    ggplot(aes(x,y)) +
+    geom_path()+
+    ggtitle("HSV")
+
+  refCol <- colorRampPalette(rev(brewer.pal(6,'Spectral')))
+  mycol <- refCol(6)
+
+  p3 <-  filter(flow_df, str_detect(filename, trial)) %>%
+    ggplot(aes(x,y)) +
+    stat_density2d(geom = 'tile', aes(fill = ..density..),
+                   contour = FALSE)+
+    coord_equal() +
+    theme_void() +
+    scale_fill_gradientn(colors =  mycol)+
+    theme(legend.position = "none")
+
+  p4 <- filter(HSV_df, str_detect(filename, trial)) %>%
+    ggplot(aes(x,y)) +
+    stat_density2d(geom = 'tile', aes(fill = ..density..),
+                   contour = FALSE)+
+    coord_equal() +
+    theme_void() +
+    scale_fill_gradientn(colors =  mycol)+
+    theme(legend.position = "none")
+
+  final_plot <- cowplot::plot_grid(
+    p1, p2, p3, p4,
+    nrow=2, align="tb"
+    )
+  
+  # we put a common title
+  title <- ggdraw() + 
+  draw_label(
+    trial,
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  )+
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+  
+  return(plot_grid(title,
+                   final_plot,
+                   ncol = 1,
+                   rel_heights = c(0.1, 1)
+                   )
+         )
+}
+
+```
+
+
+Using the interpolated xy positions from flow, we can compare to the HSV method.
+
+
+```{r inspect-multiplot, warning=FALSE, message=FALSE, cache=TRUE}
+
+clean_trials <- unique(flow_df$filename)
+clean_trials <- str_remove(clean_trials, "_.+")
+  
+multiplot_interp <- lapply(clean_trials,
+       function(x) path_multiplot(HSV_df, flow_df, x))
+for (p in multiplot_interp){print(p)}
+```
+
+
+```{r, message=FALSE}
+time_df <- read_csv("open_field/results/hsv_flow_timing.csv") %>%
+  # generate trial column by removing .mpg
+  mutate(trial = str_remove(filename, "\\..+"))
+```
+
+
+## Time
+
+Ideally, we want to have something that can run on 'real-time' (between 20 and 30 frames per second). HSV methods can run much faster but will not be accurate on a homecage environment.
+
+```{r lollipop}
+### get the frame counts ---- 
+one <- HSV_df %>%
+  group_by(filename) %>%
+  count() %>%
+  mutate(trial = str_remove(filename, "_.+"),
+         method = "HSV")
+
+two <- flow_df %>% 
+    group_by(filename) %>%
+  count() %>%
+  mutate(trial = str_remove(filename, "_.+"),
+         method = "flow")
+
+n_frames <- bind_rows(one, two)
+rm(one, two)
+
+time_df %>% 
+  left_join(n_frames, by=c("trial", "method")) %>%
+  group_by(method) %>%
+  summarise(fps = mean(n/time)) %>%
+  ggplot(aes(method, fps)) +
+  geom_rect(ymin=20, ymax=30, xmin=-Inf, xmax=Inf, fill="orange", alpha=0.1)+
+  geom_segment(aes(x = method, xend = method, y = 0, yend = fps)) +
+  geom_point(size=3) +
+  annotate("text", x=2.5, y=25,
+           label="'real-time'", color="darkorange") +
+  coord_flip()+
+  labs(y="Speed\n(frames per second)", x="Quantification Method")
+```
+
+
+## Distance & Error
+
+We calculate the difference between techniques in point to point estimation by creating an euclidean distance between the two measurements.
+
+$d(t) = \sqrt{(X(t)_{flow}-X(t)_{HSV})^2}$
+
+where
+
+$X(t)_{flow} = (x(t), y(t))$
+
+Ideally, we expect $d(t)$ normally distributed with mean 0 and var 
+
+$d(t) \sim \mathcal{N}(0, \sigma^2)$
+
+Visually,
+
+```{r, eval=FALSE, results="hide"}
+# change to eval TRUE if you want to actually run it again
+my_video <- Rvision::video("open_field/videos/Trial1.mpg")
+
+# 0.5 secs between frames
+animation::ani.options(interval=0.5)
+animation::saveGIF(
+for (tt in 1:50){
+  i <- Rvision::readNext(my_video)
+  plot(i)
+  points(flow_df$i_x[tt], 480-flow_df$i_y[tt], col="blue", pch=18)
+  points(HSV_df$x[tt], 480-HSV_df$y[tt], col="orange", pch=18)
+  text(100,480, sprintf("frame %s", tt))
+  
+},
+movie.name = "hsv_flow_sample.gif",clean = TRUE
+)
+
+Rvision::release(my_video)
+```
+
+```{r}
+knitr::include_graphics("hsv_flow_sample.gif")
+```
+
+Here's the example of the same points, where the segment between points is the $d(t)$ that we want to estimate. 
+
+```{r}
+d_show <- flow_df %>% ungroup() %>%
+  slice(1:50) %>%
+  mutate(frame = 1:n())%>%
+  select(filename, frame, i_x, i_y) %>%
+  bind_cols(HSV_df %>% slice(1:50))
+
+ggplot(d_show, aes(x,y)) +
+  geom_segment(aes(x,xend=i_x, y, yend=i_y))+
+  geom_point()+
+  geom_point(aes(i_x, i_y), col="red")+
+  scale_y_reverse()+
+  gganimate::transition_states(frame) +
+  gganimate::shadow_mark()+
+  labs(title = 'Frame: {closest_state}')
+
+```
+
+
+
+```{r pair_xy_dist}
+# This function calculates xy distance row-wise between 2 dataframes
+# Expecting dataframes with only xy and identical dimension
+pair_xy_dist <- function(dataframe1, dataframe2){
+  # define the distance function we are going to use (euclidean)
+  euc.dist <- function(x1, x2) sqrt(sum((x1 - x2) ^ 2))
+
+  # Being very adamant about dimensions here
+  if(ncol(dataframe1)>2 | !identical(dim(dataframe1), dim(dataframe2))){
+    print(sprintf('dataframe1 has %d rows and %d columns', nrow(dataframe1), ncol(dataframe1)))
+    print(sprintf('dataframe2 has %d rows and %d columns', nrow(dataframe2), ncol(dataframe2)))
+    stop("Expecting dataframes with identical dimensions and 2 col (nx2). Check dimensions")
+  }
+    val <- sapply(1:nrow(dataframe1),
+               FUN = function(q) euc.dist(dataframe1[q,], dataframe2[q,]))
+  return(val)    
+  
+}
+```
+
+
+
+```{r, message=F}
+# to be able to calculate distances we need to trim
+# both df the same nrows
+keep_rows <- n_frames %>% group_by(trial) %>%
+  summarise(rows = min(n))
+
+# bind and slice
+
+flow <- flow_df %>%
+  mutate(trial = str_remove(filename, "_.+")) %>%
+  left_join(keep_rows, by="trial") %>%
+  filter(row_number() <= rows) %>%
+  ungroup() %>%
+  group_by(trial) %>%
+  select(trial, i_x, i_y) %>%
+  nest()
+
+h <- HSV_df %>%
+  mutate(trial = str_remove(filename, "_.+")) %>%
+  left_join(keep_rows, by="trial") %>%
+  group_by(trial) %>%
+  filter(row_number() <= rows) %>%
+  ungroup() %>%
+  group_by(trial) %>%
+  select(trial, x, y) %>%
+  nest()
+
+# now we join and get nested data frames by trial
+# we do mutate for each of the trials
+nested <- flow %>% left_join(h, by="trial") %>%
+  rename(flow=data.x, hsv=data.y) %>%
+  # takes a while
+  mutate(distance = map2(flow, hsv,
+                         function(x,y) pair_xy_dist(x,y)))
+
+
+distances <- nested %>% select(distance) %>% unnest(cols=c(distance))
+
+
+```
+
+
+We see quite a lot of error and error dependent on the trial.
+
+```{r}
+ggplot(distances, aes(trial, distance)) +
+  geom_violin()
+```
+
+The distribution is bimodal and heavily skewed (probably some wrong detection jump is responsible for the very extreme ones).
+
+Most importantly `r scales::percent(mean(distances$distance < 50), accuracy = 0.01)` of the data is below 50px (~5 cm).
+
+
+```{r pixel-calibration}
+
+filter(HSV_df) %>%
+  group_by(filename) %>%
+  summarise(x_range=max(x) - min(x), y_range = max(y) - min(y)) %>%
+  slice(1:6) %>% # last 2 trials have almost no movement
+  ungroup() %>%
+  summarise(mean(x_range), mean(y_range)) %>%
+  unlist() %>% mean() -> px_box_side
+
+# px_box_side equals 50 cm in real life
+
+```
+
+
+
+```{r distance-density}
+
+# 50 cm * 50 px / px_box_side
+equivalence <- round(50 * 50 / px_box_side, 2)
+
+lb <- paste0("~",
+  scales::percent(mean(distances$distance < 50), accuracy = 0.1),
+  "\nof detections have a distance error <50px\n(",
+  equivalence, "cm)"
+)
+
+
+ggplot(distances, aes(distance)) +
+  geom_density(fill="gray20") +
+  geom_vline(xintercept = 50, col="red")+
+  annotate("text", x= 100, y = 0.01, label = lb)+
+  xlab("Distance (px)")
+```
+
+
+## Movement
+
+We have 3 measures of pixel to pixel movement
+
+* Optic flow (arbitrary units)
+* Optic flow derived XY (px)
+* HSV (px)
+
+We start with optic flow derived vs HSV and see whether we can get get a good correlation.
+
+```{r}
+total_dist <- function(x,y) {
+  # default to NA on lag, correct later
+  pre <- sqrt((x-lag(x))^2 + (y-lag(y)) ^2)
+  post <- ifelse(is.na(pre), 0, pre)
+  return(post)
+}
+
+```
+
+
+```{r, message=F}
+
+distance_df <- nested %>%
+  mutate(
+    px_dist_flow = map(
+    flow, function(tt) total_dist(tt$i_x, tt$i_y)),
+    cum_dist_flow = map(
+      px_dist_flow, function(tt) cumsum(tt)
+    ),
+    px_dist_hsv = map(
+      hsv, function(tt) total_dist(tt$x, tt$y)
+    ),
+    cum_dist_hsv = map(
+      px_dist_hsv, function(tt) cumsum(tt)
+    )
+    ) %>% 
+  select(-flow, - hsv) %>%
+  unnest(cols = c(distance, px_dist_flow, cum_dist_flow, px_dist_hsv, cum_dist_hsv))
+
+```
+
+
+```{r, message=F}
+distance_df %>%
+  ggplot(aes(px_dist_hsv, px_dist_flow)) + 
+  geom_point(alpha=0.1)+
+  facet_wrap(~trial)+
+  geom_smooth(method="lm")
+```
+
+
+The correlation between movement and optic flow is quite good.
+
+```{r, message=FALSE}
+distance_df$movement <- flow_df$movement
+ggplot(distance_df, aes(px_dist_hsv,movement)) +
+  geom_point(alpha=0.1)+
+  facet_wrap(~trial)+
+  geom_smooth(method="lm")
+```
+
+## Cummulative distance analysis 
+
+We can further check using cummulative distance on the px to px analysis.
+
+px_dist from flow vs px_dist_hsv
+
+```{r }
+distance_df %>%
+    #mutate(cum_dist_movement = cumsum(movement)) %>%
+    mutate(frame=1:n()) %>%
+    select(trial, frame, cum_dist_flow, cum_dist_hsv) %>% 
+    pivot_longer(starts_with("cum_dist"),
+                 names_to = "method",
+                 names_prefix = "cum_dist_",
+                 values_to = "distance") %>%
+  ggplot(aes(frame, distance, color=method)) + 
+  geom_line() +
+  scale_color_manual(values=c("black",  "orange"))+
+  facet_wrap(~trial, scales = "free_y")+
+  scale_y_continuous(labels=scales::label_scientific())
+```
+
+## Correlation analysis
+
+```{r}
+
+group_corr <- 
+distance_df %>%
+  group_by(trial) %>%
+  summarise(r_mov_hsv = cor(movement, px_dist_hsv), 
+            r_deriv_hsv = cor(px_dist_flow, px_dist_hsv),
+            r_deriv_mov = cor(px_dist_flow, movement)) %>% 
+  pivot_longer(-trial, names_to = "method", names_prefix = "r_")
+
+group_corr %>%
+  ggplot(aes(method, trial, fill=value))+
+  geom_tile(color="white") +
+  theme(panel.background = element_blank())+
+  scale_fill_gradient(low="black", high="green")
+```
+
+Another way to visualize these correlations is ploting the $r$ value for each trial vs each method.
+
+
+```{r}
+group_corr %>%
+  ggplot(aes(method, value))+
+  geom_boxplot(fatten=3, width=0.3)+
+  ggbeeswarm::geom_quasirandom(width = 0.2)+
+  ylim(c(0,1))+ ylab("correlation")+
+  xlab("method pair")+
+  geom_hline(yintercept = 1, lty=4)
+```
+
+
+Or using a correlation matrix displaying the median correlation for each pair. 
+
+```{r}
+# I don't fully like this one
+# GGally::ggcorr(distance_df %>%
+#                 ungroup() %>%
+#                 select(movement, px_dist_flow, px_dist_hsv),
+#               label = TRUE, label_round = 2)
+  group_corr %>% 
+  group_by(method) %>%
+  summarise(value = median(value)) %>%
+  separate(method, into=c("Var1", "Var2")) -> cor_mat
+  
+  # swap order on 3 row to get triangular
+  cor_mat[3,1:2] <- cor_mat[3,2:1]
+  cor_mat %>%
+  # bind cor = 1
+  bind_rows(tibble(Var1=c("mov", "deriv", "hsv"),
+                   Var2=c("mov", "deriv", "hsv"),
+                   value =1)) %>%
+  ggplot(aes(Var1, Var2, fill=value))+
+  geom_tile(color="white", lwd=0.5)+
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  geom_text(aes(label = round(value, 2)))+
+  labs(x = "", y = "") +
+  theme(panel.background = element_blank(), axis.ticks = element_blank(),
+        panel.border = element_rect(color="black", fill=NA),
+        legend.position = "none")
+
+
+```
+
+
+### Hardware and Software
+
+```{r}
+
+## Return the machine CPU
+RAM <- as.numeric(benchmarkme::get_ram())/10^9
+RAM <- paste(round(RAM, 2), "Gb")
+
+benchmarkme::get_cpu()[c("model_name", "no_of_cores")] %>%
+  as_tibble() %>%
+  rename(CPU = model_name, cores = no_of_cores) %>%
+  mutate(RAM = RAM) %>%
+  knitr::kable()
+
+```
+
+
+### R Session 
+
+```{r}
+sessionInfo()
+
+```
+
+
