@@ -2,7 +2,7 @@
 Type=Application
 Comment=flowGUI
 Name=flowGUI
-Exec=python3 /home/pi/homecage_quantification/GUI.py
+Exec=cd homecage_quantification && python3 /home/pi/homecage_quantification/GUI.py
 Icon=/home/pi/homecage_quantification/docs_img/flow_logo.png
 Terminal=true
 Categories=Utility

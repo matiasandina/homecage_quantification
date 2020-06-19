@@ -152,6 +152,7 @@ class App():
 		# possible interfaces ['wlan0', 'eth0']
 		try:
 			mac = open('/sys/class/net/'+interface+'/address').readline()
+			mac = mac.replace("\n", "")
 		except:
 			try:
 				# interface wlp2s0 for debugging outside of Pi
