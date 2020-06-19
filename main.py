@@ -40,7 +40,7 @@ def running_flag():
 	mac = mac.replace("\n", "")
 
 	while True:
-		with open('running.txt', "w") as the_file:
+		with open('~/homecage_quantification/running.txt', "w") as the_file:
 			# because we are using .utcnow() 
 			# dates will be given as UTC (hence you need to transform to your local time)
 			the_file.write(datetime.datetime.utcnow().isoformat())

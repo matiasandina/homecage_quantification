@@ -235,6 +235,8 @@ if __name__ == '__main__':
         # we are using the webcam 0...might create problems
         cap = imutils.video.VideoStream(src=0).start()
         filename = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + "_opt_flow.csv"
+        # make path absolute
+        filename = os.path.join("~/homecage_quantification", filename)
         opt_flow(cap, show_video = args["show_video"], filename = filename)
     else:
         # all hell can break lose here but whatever
