@@ -152,8 +152,7 @@ class App():
 		# possible interfaces ['wlan0', 'eth0']
 		#try:
 		path_to_mac = '/sys/class/net/'+ 'wlan0' +'/address'
-		print(path_to_mac) 
-		mac = open().readline()
+		mac = open(path_to_mac).readline()
 		mac = mac.replace("\n", "")
 		#except:
 		#	try:
