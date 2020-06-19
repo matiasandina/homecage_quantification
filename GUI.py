@@ -151,7 +151,9 @@ class App():
 		# This is good for Raspberry PIs, not good for other OS !
 		# possible interfaces ['wlan0', 'eth0']
 		#try:
-		mac = open('/sys/class/net/'+interface+'/address').readline()
+		path_to_mac = '/sys/class/net/'+ interface +'/address'
+		print(path_to_mac) 
+		mac = open().readline()
 		mac = mac.replace("\n", "")
 		#except:
 		#	try:
@@ -256,8 +258,6 @@ def create_app(root):
 if __name__ == '__main__':
 	# hard-coded current directory
 	os.chdir("/home/pi/homecage_quantification")
-	print(os.getcwd())
-
 	root = tkinter.Tk()
 	# widthxheight+300+300 pxposition from the leftcorner of the monitor
 	root.geometry("800x350+300+300")
