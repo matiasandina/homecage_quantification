@@ -147,11 +147,11 @@ class App():
 		# because of this, they will resize and fill space with the menu_left_upper
 		self.menu_left_upper.grid_columnconfigure(1, weight=1)
 
-	def get_mac(interface = 'wlan0'):
+	def get_mac():
 		# This is good for Raspberry PIs, not good for other OS !
 		# possible interfaces ['wlan0', 'eth0']
 		#try:
-		path_to_mac = '/sys/class/net/'+ interface +'/address'
+		path_to_mac = '/sys/class/net/'+ 'wlan0' +'/address'
 		print(path_to_mac) 
 		mac = open().readline()
 		mac = mac.replace("\n", "")
