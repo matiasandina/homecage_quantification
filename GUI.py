@@ -147,7 +147,7 @@ class App():
 		# because of this, they will resize and fill space with the menu_left_upper
 		self.menu_left_upper.grid_columnconfigure(1, weight=1)
 
-	def get_mac():
+	def get_mac(self):
 		# This is good for Raspberry PIs, not good for other OS !
 		# possible interfaces ['wlan0', 'eth0']
 		#try:
