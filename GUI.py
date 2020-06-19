@@ -150,16 +150,17 @@ class App():
 	def get_mac(interface = 'wlan0'):
 		# This is good for Raspberry PIs, not good for other OS !
 		# possible interfaces ['wlan0', 'eth0']
-		try:
-			mac = open('/sys/class/net/'+interface+'/address').readline()
-			mac = mac.replace("\n", "")
-		except:
-			try:
+		#try:
+		mac = open('/sys/class/net/'+interface+'/address').readline()
+		mac = mac.replace("\n", "")
+		#except:
+		#	try:
 				# interface wlp2s0 for debugging outside of Pi
-				mac=open('/sys/class/net/wlp2s0/address').readline()
-			except:
-				mac = "00:00:00:00:00:00"
-		return mac[0:17]
+		#		mac=open('/sys/class/net/wlp2s0/address').readline()
+		#	except:
+		#		mac = "00:00:00:00:00:00"
+		# mac = mac[0:17]
+		return mac
 
 
 	def insert_data(self):
@@ -253,6 +254,10 @@ def create_app(root):
 	App(window = root, window_title = "Experiment GUI")
 
 if __name__ == '__main__':
+	# hard-coded current directory
+	os.chdir("/home/pi/homecage_quantification")
+	print(os.getcwd())
+
 	root = tkinter.Tk()
 	# widthxheight+300+300 pxposition from the leftcorner of the monitor
 	root.geometry("800x350+300+300")
