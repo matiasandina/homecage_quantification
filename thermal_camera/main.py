@@ -131,24 +131,31 @@ sampling_freq = 30
 # camera resolution. "merge=True" merges all overlapping blobs in the image.
 
 while(True):
-    clock.tick()
-    img = sensor.snapshot()
-
-    #for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
-    #    img.draw_rectangle(blob.rect(), color=127)
-    #    img.draw_cross(blob.cx(), blob.cy(), color=127)
-    #print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
-    
-    # generate filename with stamp
-    filename = create_filename(rtc.datetime())
-    img.save(filename)
-    # blink RED LED, sleep for 1 minute
-    blink(1, sleep_time=500)
-    # blink RED LED, sleep for 1 minute
-    blink(1, sleep_time=500)
-    # turn infrared lights if it's dark
-    pyb.LED(4).on()
-    # delay account for the 2*500 ms of blink delay
-    pyb.delay(1000 * sampling_freq - 1000)
-    # turn off so we can take thermal image
-    pyb.LED(4).off()
+    try:
+        clock.tick()
+        img = sensor.snapshot()
+        #for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
+        #    img.draw_rectangle(blob.rect(), color=127)
+        #    img.draw_cross(blob.cx(), blob.cy(), color=127)
+        #print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
+        
+        # generate filename with stamp
+        filename = create_filename(rtc.datetime())
+        img.save(filename)
+        # blink RED LED, sleep for 1 minute
+        blink(1, sleep_time=500)
+        # blink RED LED, sleep for 1 minute
+        blink(1, sleep_time=500)
+        # turn infrared lights if it's dark
+        # pyb.LED(4).on()
+        # delay account for the 2*500 ms of blink delay
+        pyb.delay(1000 * sampling_freq - 2*500)
+        # turn off so we can take thermal image
+        # pyb.LED(4).off()
+    except:
+        # do something here to tell me we couldn't take one picture
+        f=open('/error.txt','w')
+        string = "Error happened at: " + rtc.datetime()
+        f.write(string)
+        f.close()
+        pass
