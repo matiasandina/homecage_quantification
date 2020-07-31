@@ -97,8 +97,8 @@ import sensor, image, time, math
 threshold_list = [(220, 255)]
 
 # Set the target temp range here
-min_temp_in_celsius = 10
-max_temp_in_celsius = 50
+min_temp_in_celsius = 25
+max_temp_in_celsius = 42
 
 to_write = str(min_temp_in_celsius) + " " + str(max_temp_in_celsius)
 
