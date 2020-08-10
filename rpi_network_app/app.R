@@ -372,7 +372,9 @@ server <- function(input, output, session) {
 
     # We need to pool IPs once 
     ip_list <- pool_ip()
-    
+    df <- process_data(ip_list)
+    # This updates the render, which help with the buttons on the table and info
+    # all other df manipulations on the server side are done to the first df object
     observe({
         # let's use 5 mins = 300 sec = 300 * 10^3 ms
         invalidateLater(300 * 10^3, session)
