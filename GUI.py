@@ -171,7 +171,7 @@ class App():
 		self.treeview.insert('', 'end',
 		                     values=(
 		                     	self.get_mac(),
-		                     	datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S"),
+		                     	datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
 		                     	self.id_entry.get(),
 		                     	self.treatment_entry.get(),
 		                        self.dose_entry.get(),
