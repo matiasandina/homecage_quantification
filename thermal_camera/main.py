@@ -23,6 +23,8 @@ def blink(led_number, sleep_time = 300):
     pyb.LED(led_number).on()
     pyb.delay(sleep_time)
     pyb.LED(led_number).off()
+    pyb.delay(sleep_time)
+
 
 def parse_date(data):
     # date will come in a string with (datetime object)"
@@ -143,13 +145,13 @@ while(True):
         filename = create_filename(rtc.datetime())
         img.save(filename)
         # blink RED LED to give user feedback
-        blink_times = 10
+        blink_times = 5
         for i in range(blink_times):
             blink(1, sleep_time=500)
         # turn infrared lights if it's dark
         # pyb.LED(4).on()
         # delay account for the 2*500 ms of blink delay
-        pyb.delay(1000 * sampling_freq - blink_times*500)
+        pyb.delay(1000 * sampling_freq - blink_times*2*500)
         # turn off so we can take thermal image
         # pyb.LED(4).off()
     except:
