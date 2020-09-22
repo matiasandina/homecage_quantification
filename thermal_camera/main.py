@@ -1,5 +1,6 @@
 import sensor, image, time, pyb
 from pyb import USB_VCP
+import os
 
 def year(datetime):
     return str(datetime[0])
@@ -17,8 +18,7 @@ def timestamp(datetime):
     date_string = '-'.join([year(datetime), month(datetime), day(datetime)])
     time_string = '-'.join([hour(datetime), minute(datetime), second(datetime)])
     return "T".join([date_string, time_string])
-def create_filename(datetime, ext=".jpg"):
-    return '/' + timestamp(datetime) + "_capture" + ext
+
 def blink(led_number, sleep_time = 300):
     pyb.LED(led_number).on()
     pyb.delay(sleep_time)
@@ -49,6 +49,22 @@ def write__time(string):
     f.write(string)
     f.close()
 
+def make_dir(name):
+    try:
+        os.mkdir("/" + name)
+    except:
+        print("Directory exists")
+def date(datetime):
+    return '-'.join([year(datetime), month(datetime), day(datetime)])
+def create_filename(datetime, ext):
+    rec_date = date(datetime)
+    rec_hour = hour(datetime)
+    make_dir("/" + rec_date)
+    make_dir("/" + rec_date + "/" + rec_hour)
+    filename = "/" + rec_date +  "/" + rec_hour + "/" + timestamp(datetime)
+    filename = filename + "_capture" + ext
+    print(filename)
+    return filename
 
 # micropython does not have decode, this is a hack
 def decode(binary_string):
@@ -125,7 +141,7 @@ sensor.set_pixformat(sensor.GRAYSCALE)
 sensor.set_framesize(sensor.QQVGA)
 sensor.skip_frames(time=5000)
 clock = time.clock()
-# sampling frequency in min
+# sampling frequency in seconds
 sampling_freq = 30
 
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
@@ -157,7 +173,7 @@ while(True):
     except:
         # do something here to tell me we couldn't take one picture
         f=open('/error.txt','w')
-        string = "Error happened at: " + rtc.datetime()
+        string = "Error happened at: " + timestamp(rtc.datetime())
         f.write(string)
         f.close()
         pass

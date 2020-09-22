@@ -1,6 +1,6 @@
 library(shiny)
-library(dtplyr)
 library(tidyverse)
+library(dtplyr)
 library(lubridate)
 library(shinycssloaders)
 library(shinyFiles)
@@ -53,6 +53,53 @@ add_extra <- function(df) {
 }
 
 
+# Read config files -------------------------------------------------------
+
+read_config_files <- function(target_date){
+    dirs <- list.dirs(path = "/home/choilab/raspberry_IP/", recursive=FALSE)
+    pattern_to_find <- paste0(target_date,".*_config.csv")
+    files_inside <- lapply(dirs, function(tt) list.files(tt, pattern = pattern_to_find, full.names=TRUE)) %>%
+        unlist()
+    col_classes <- cols(
+        mac = col_character(),
+        date = col_character(),
+        ID = col_character(),
+        Treatment = col_character(),
+        Dose = col_character(),
+        Comment = col_character()
+    )
+    configs <- purrr::map(files_inside, function(x) read_csv(x, col_types = col_classes)) %>% bind_rows() 
+    if (nrow(configs) > 0) {
+        configs <- configs %>% rename(datetime = date)
+    }
+    return(configs)
+}
+
+
+# Match configs with data -------------------------------------------------
+
+
+match_by_group_date <- function(df1, df2, grp, datecol) {
+    
+    grp1 <- df1 %>% pull({{grp}}) %>% unique()
+    grp2 <- df2 %>% pull({{grp}}) %>% unique()
+    
+    li <-
+        lapply(intersect(grp1, grp2), function(tt) {
+            d1 <- filter(df1, {{grp}}== tt)
+            d2 <- filter(df2, {{grp}}==tt) %>% mutate(indices = 1:n())
+            d2_date <- d2 %>% pull({{datecol}}) %>% as.POSIXct()
+            d1 <- mutate(d1, indices = map_dbl({{datecol}}, function(d) which.min(abs(d2_date - as.POSIXct(d)))))
+            
+            left_join(d1,d2, by=c(quo_name(enquo(grp)), "indices"))
+        })
+    
+    # bind rows
+    return(bind_rows(li) %>% rename(datetime = datetime.x, exp_start = datetime.y))
+}
+
+
+
 # Functions to make plots -------------------------------------------------
 
 lineplot <- function(df, x_axis){
@@ -86,6 +133,23 @@ lineplot <- function(df, x_axis){
         theme_lineplot -> p
     return(p)
     
+}
+
+make_heatmap <- function(df){
+    
+    p <- ggplot(df %>% mutate(day = lubridate::date(datetime)),
+                aes(i_x, i_y)) +
+        # If you want to make sure the peak intensity is the same in each facet,
+        # use `contour_var = "ndensity"`.
+        geom_density_2d_filled(contour_var = "ndensity") +
+        #   geom_path(alpha=0.1, color="white") +
+        facet_grid(day~mac)+
+        theme_void()+
+        theme(legend.position="bottom")+
+        # add the box limits (somewhat by eye from clean_cage_snapshot.png)
+        annotate("rect", xmin=20, xmax=500, ymin=0, ymax=480, lwd=1, fill=NA, color="red")
+        coord_cartesian(xlim=c(0,640), ylim=c(0,480))
+        return(p)
 }
 
 # Themes for graphs
@@ -179,10 +243,6 @@ ui <- fluidPage(
         tags$p(HTML("You are currently working with this file(s):")),
         verbatimTextOutput("filepaths"),
         #fileInput("file", "Data", buttonLabel = "Upload .csv.gz", multiple = TRUE),
-        dateRangeInput('dateRange',
-                       label = 'Date range input: yyyy-mm-dd',
-                       start = Sys.Date() - 2, end = Sys.Date() + 2
-        )
     ),
     
     # Show a plot of the generated distribution
@@ -198,29 +258,42 @@ ui <- fluidPage(
                          ),
                 # TabPanel Individual ------------
                 tabPanel("Individual", value = "individual",
+                         h3("Homecage Movement"),
                          fluidRow(
-                             column(6,
+                             column(4,
                          radioButtons("individual_radio", label = h4("Show Data Aggregated by"),
                                       choices = time_bins,
                                       # no default
                                       selected = character(0)),
                          textOutput(outputId = "individual_status"),
                          ),
-                             column(6,
+                             column(4,
                          radioButtons("time_radio", label = h4("Display time type"),
                                       choices = c("datetime", "ZT", "Hours from lights-on"),
                                       # no default
                                       selected = character(0))
-                             )
+                             ),
+                            column(4,
+                                   selectInput('datein', 'Filter Dates', state.name, multiple=TRUE, selectize=TRUE)
+                            )
                          ),
                          hr(),    
                          plotOutput("individual_plot") %>% withSpinner(color="#0dc5c1"),
                          hr(),
-                         column(width = 6,
-                                downloadButton("download_individual_plot",
+                         fluidRow(column(width=4, 
+                                         downloadButton("download_individual_plot",
                                                label = "Download plot",
                                                class = "btn-block")
-                                )
+                                         )),
+                         h3("Homecage Position Heatmap"),
+                         hr(),    
+                         plotOutput("heatmap_plot") %>% withSpinner(color="#0dc5c1"),
+                         hr(),
+                         fluidRow(column(width=4, 
+                                downloadButton("download_heatmap_plot",
+                                               label = "Download plot",
+                                               class = "btn-block")
+                                 ))
                          ),
                 # TabPanel Grouped ------------
                 tabPanel("Grouped", value = "grouped",
@@ -299,6 +372,8 @@ server <- function(input, output, session) {
                  {
                      if (!is.integer(input$file)) {
                          values$datasource <- "upload" 
+                         # call function to tidy data
+                         tidied()
                      }
                  })
     
@@ -332,6 +407,7 @@ server <- function(input, output, session) {
         )
 
         files_to_read <- get_paths()
+        print(files_to_read)
 
         # read and interpolate
         li <- lapply(files_to_read,
@@ -339,53 +415,48 @@ server <- function(input, output, session) {
                         vroom::vroom(tt, delim = delim, skip = 0, col_types = flow_classes)
                      # TODO: throw errors if the names do not match here
         )
-
+        print(sapply(li, names))
         names(li) <- files_to_read
         output$status <- renderText("Reading Finished")
         return(li)
     })
     
     
-    # Get dates --------
-    
-    get_date_range <- reactive({
-        out <- list(from = input$dateRange[1],
-                    to = input$dateRange[2])
-        out <- lapply(out, as.POSIXct)
-        return(out)
-    })
-    
     # Clean ----------------------------------------------------------------
     tidied <- reactive({
         
         req(is.integer(input$file) == FALSE && values$datasource == "upload")
+        # user feedback ----
+        output$status <- renderText("Cleaning Data")
+        print("Cleaning Data...")
+        showModal(modalDialog("Cleaning data... Please wait.", easyClose = FALSE))
         # get raw data
         li <- raw()
         # code for a plot
         df <- bind_rows(li) 
 
         
-        # user feedback ----
-        output$status <- renderText("Cleaning Data")
-        print("Cleaning Data...")
-        showModal(modalDialog("Cleaning data... Please wait.", easyClose = FALSE))
-        
         # clean -----
-        
+        print("Smoothing with median filter")
         df <- df %>% 
             group_by(filename) %>%
             # interpolated xy
             mutate(i_x = median_filter(x),
                    i_y = median_filter(y)) %>% 
             ungroup() 
+        
+        print(df[nrow(df), "filename"])
 
         removeModal()
         showModal(modalDialog("Aggregating and writing data... Please wait.", easyClose = FALSE))
         
         # we make a new folder with the same name of the root directory
         # we asume experiments will be put in that folder if they belong there
-        root <- dirname(get_paths())
+        # of more than one, we keep the first one
+        root <- dirname(get_paths())[1]
         root <- file.path(root, basename(root))
+        print("Creating folder at")
+        print(root)
         dir.create(root)
         purrr::map(time_bins, function(bin) {
             filename <- paste0(basename(root), "_aggregate_",
@@ -423,7 +494,7 @@ server <- function(input, output, session) {
     #output$preview1 <- DT::renderDataTable(tidied() %>%  slice(1:10),
     #                                   options = table_render_options)
     
-    output$preview1 <- renderTable(tidied()[1:10, ])
+    #output$preview1 <- renderTable(tidied()[1:10, ])
 
     # individual plot ---------------------------------------------------------
     read_aggregate_data <- function(bin_pattern){
@@ -443,7 +514,7 @@ server <- function(input, output, session) {
     }
     
 
-    # Radio buttons individual plot -------------------------------------------
+    # Feedback for radio buttons individual plot -------------------------------------------
     output$individual_status <- renderText(
         validate(
             need(input$individual_radio != character(0), message = "Please select sampling frequency"),
@@ -451,6 +522,8 @@ server <- function(input, output, session) {
         )
     )
     
+
+    #  Observe radio buttons individual plot ----------------------------------
     observeEvent({
         input$individual_radio
         input$time_radio}
@@ -463,13 +536,56 @@ server <- function(input, output, session) {
                      sum_df <- read_aggregate_data(bin_pattern)
                      # add the extra info layers
                      sum_df <- add_extra(sum_df)
+                     # go get the config files
+                     target_dates <- sum_df %>%
+                         mutate(datetime = str_extract(string = datetime,
+                                                       pattern = "[0-9]{4}-[0-9]{2}-[0-9]{2}")) %>%
+                         pull(datetime) %>% unique()
+                     # update date selector
+                     updateSelectInput(session = session, inputId = "datein",
+                                       choices = target_dates)
+                     configs <- purrr::map(target_dates, read_config_files) %>% bind_rows()
+                     # bind 
+                     sum_df <- match_by_group_date(sum_df, configs, mac, datetime)
                      print(sum_df)
-                     
+
                      # call the plot
                      output$individual_plot <- renderPlot(lineplot(sum_df, x_axis = input$time_radio))
-                     
+                     output$heatmap_plot <- renderPlot(make_heatmap(sum_df))
 
     })
+    
+
+    # Observe date filtering individual ---------------------------------------
+    observeEvent(
+        input$datein,{
+        output$individual_status <- renderText("")
+        # parse the individual_radio ----
+        bin_pattern <- str_replace(input$individual_radio, " ", "_")
+        # call the reactive function
+        sum_df <- read_aggregate_data(bin_pattern)
+        # add the extra info layers
+        sum_df <- add_extra(sum_df)
+        # go get the config files
+        target_dates <- sum_df %>%
+            mutate(datetime = str_extract(string = datetime,
+                                          pattern = "[0-9]{4}-[0-9]{2}-[0-9]{2}")) %>%
+            pull(datetime) %>% unique()
+        configs <- purrr::map(target_dates, read_config_files) %>% bind_rows()
+        # bind 
+        sum_df <- match_by_group_date(sum_df, configs, mac, datetime)
+        # Filter date
+        if (!is.null(input$datein)){
+            sum_df <- filter(sum_df, str_detect(string = lubridate::date(datetime),
+                                                pattern = paste(input$datein, collapse="|")))
+        }
+        # call the plot
+        output$individual_plot <- renderPlot(lineplot(sum_df, x_axis = input$time_radio))
+        output$heatmap_plot <- renderPlot(make_heatmap(sum_df))
+        
+        })
+
+    
 
     # Download plots ----------------------------------------------------------
     output$download_individual_plot = downloadHandler(
