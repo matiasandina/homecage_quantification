@@ -56,7 +56,7 @@ def make_dir(name):
         print("Directory exists")
 def date(datetime):
     return '-'.join([year(datetime), month(datetime), day(datetime)])
-def create_filename(datetime, ext):
+def create_filename(datetime, ext=".jpg"):
     rec_date = date(datetime)
     rec_hour = hour(datetime)
     make_dir("/" + rec_date)
@@ -150,20 +150,17 @@ sampling_freq = 30
 
 while(True):
     try:
-        clock.tick()
-        img = sensor.snapshot()
-        #for blob in img.find_blobs(threshold_list, pixels_threshold=200, area_threshold=200, merge=True):
-        #    img.draw_rectangle(blob.rect(), color=127)
-        #    img.draw_cross(blob.cx(), blob.cy(), color=127)
-        #print("FPS %f - Lepton Temp: %f C" % (clock.fps(), sensor.ioctl(sensor.IOCTL_LEPTON_GET_FPA_TEMPERATURE)))
-        
-        # generate filename with stamp
-        filename = create_filename(rtc.datetime())
-        img.save(filename)
         # blink RED LED to give user feedback
         blink_times = 5
         for i in range(blink_times):
             blink(1, sleep_time=500)
+        # generate filename with stamp
+        filename = create_filename(rtc.datetime())
+        # take the pic
+        img = sensor.snapshot()
+        # save the pic
+        img.save(filename)
+
         # turn infrared lights if it's dark
         # pyb.LED(4).on()
         # delay account for the 2*500 ms of blink delay
