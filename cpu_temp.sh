@@ -8,6 +8,6 @@ do
 		# get temp and only the numeric values
 		temp=$(vcgencmd measure_temp | egrep -o '[0-9]*\.[0-9]*')
 		timestamp=$(date)
-		printf "%-15s%5s\n" "$timestamp" " " "$temp"
+		printf "%-15s%5s\n" "$timestamp" "$temp"
 		sleep 10
 done
