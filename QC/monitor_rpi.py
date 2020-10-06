@@ -13,6 +13,7 @@ import datetime
 # TODO: change this to deque if you are concerned about stack issues
 datetime_list = []
 cpu_list = []
+cpu_temp_list = []
 mean_cpu_list = []
 ram_list = []
 
@@ -35,7 +36,7 @@ while True:
 	datetime_list.append(dt)
 	cpu_list.append(cpu_percent)
 	mean_cpu_list.append(mean_cpu)
-	cpu_temp.append(cpu_temp)
+	cpu_temp_list.append(cpu_temp)
 
 	# sleep 10 seconds
 	time.sleep(10)
