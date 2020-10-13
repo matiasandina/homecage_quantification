@@ -160,6 +160,7 @@ def opt_flow(cap, show_video, filename):
            xy_deque.append(xy)
         else:
             xy_deque.append(None)
+            mask = None
 
 
         if (show_video):
