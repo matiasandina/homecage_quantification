@@ -23,8 +23,8 @@ import sensor, image, time, math
 threshold_list = [(200, 255)]
 
 # Set the target temp range here
-min_temp_in_celsius = 10
-max_temp_in_celsius = 40
+min_temp_in_celsius = 25
+max_temp_in_celsius = 42
 
 print("Resetting Lepton...")
 # These settings are applied on reset
