@@ -372,7 +372,7 @@ server <- function(input, output, session) {
                  {
                      if (!is.integer(input$file)) {
                          values$datasource <- "upload" 
-                         # call function to tidy data
+                         # call function to tidy data   
                          tidied()
                      }
                  })
