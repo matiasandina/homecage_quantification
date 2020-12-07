@@ -8,9 +8,9 @@ import os
 # Thermal Cameras ------
 # This will remove things that start with 20 (as in 2020 and the next 80 years) 
 # it will not clean EVERYTHING, but close enough
-os.system("/media/pi/*/20* -exec rm -f {} +")
+os.system("find /media/pi/*/20* -exec rm -f {} +")
 # now the directories 
-os.system("/media/pi/*/20* -exec rm -f {} +")
+os.system("find /media/pi/*/20* -exec rm -f {} +")
 
 # Color Cameras -----
 # limit search to maxdepth 1, so that we only look on homecage_quantification folder
