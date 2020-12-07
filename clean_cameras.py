@@ -13,5 +13,6 @@ os.system("/media/pi/*/20* -exec rm -f {} +")
 os.system("/media/pi/*/20* -exec rm -f {} +")
 
 # Color Cameras -----
-os.system("find /home/pi/homecage_quantification/ -name '*_opt_flow.csv' -type f -exec rm -f {} +")
-os.system("find /home/pi/homecage_quantification/ -name '*config.csv' -type f -exec rm -f {} +")
+# limit search to maxdepth 1, so that we only look on homecage_quantification folder
+os.system("find /home/pi/homecage_quantification/ -maxdepth 1 -name '*_opt_flow.csv' -type f -exec rm -f {} +")
+os.system("find /home/pi/homecage_quantification/ -maxdepth 1 -name '*config.csv' -type f -exec rm -f {} +")
