@@ -1,7 +1,7 @@
 ---
 title: "Open Field QC"
 author: "Matias Andina"
-date: "4/23/2020"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -17,13 +17,13 @@ library(DiagrammeR)
 
 We will take data coming from different Open Field trials and quantify using:
 
-* Optical Flow
-* HSV transform (Ethovision-like way)
-* DeepLabCut
+-   Optical Flow
+-   HSV transform (Ethovision-like way)
+-   DeepLabCut
 
 We will also develop a tracking method from optic flow to get xy position for the mice. We will compare methods.
 
-```{r, eval=FALSE, results='hide'}
+```{r, eval=FALSE, results='hide', eval=FALSE}
 
 # THIS TAKES A LONG TIME TO RUN ------------
 # USING DATA ALREADY SAVED -----------------
@@ -139,13 +139,37 @@ flow_df <- flow_df %>%
 glimpse(flow_df)
 ```
 
+```{r read-DLC}
+dlc_files <- list.files("open_field/results/DLC/", full.names = T)
+# the files are messy, use this library to read the files
+# devtools::install_github("HeathRossie/dlcpr")
+library(dlcpr)
+library(data.table)
+
+dlc <- read.all(dlc_files) 
+```
+
+
+```{r}
+dlc %>% 
+  select(ser, contains("Midsection")) %>% 
+  mutate(filename = paste0("Trial", ser)) %>% 
+  rename_at(.vars = vars(starts_with("Midsection_")),
+            .funs = ~ str_remove(., "Midsection_"))-> dlc_cent
+  
+```
+
+
+
 ```{r}
 DiagrammeR::mermaid(
   "graph LR
   video --> flow
   video --> HSV
   video --> DLC
-  DLC --> Correlate
+  DLC --> |read| Spline
+  Spline --> Correlate
+  Correlate
   flow --> flow_Movement
   flow --> flow_XY
   HSV -->|Read| px_movement_HSV
@@ -158,10 +182,9 @@ DiagrammeR::mermaid(
 )
 ```
 
-
 ## Smoothing
 
-This step also involves interpolation in the case that there are missing values on the data. 
+This step also involves interpolation in the case that there are missing values on the data.
 
 ```{r smooth, echo = FALSE}
 median_filter <- function(x){
@@ -186,6 +209,83 @@ if (nrow(filter(flow_df, is.na(i_x))) == 0){
   print("There are still NAs present on the data")
 }
 ```
+
+## Match row numbers
+
+The different methods have 1 or 2 frames of difference. We have to cut all of the `data.frames` to the same length for each trial.  
+
+
+```{r count-frames}
+### get the frame counts ---- 
+one <- HSV_df %>%
+  group_by(filename) %>%
+  count() %>%
+  mutate(trial = str_remove(filename, "_.+"),
+         method = "HSV")
+
+two <- flow_df %>% 
+    group_by(filename) %>%
+  count() %>%
+  mutate(trial = str_remove(filename, "_.+"),
+         method = "flow")
+
+three <- dlc_cent %>% rename(trial=filename) %>%
+  group_by(trial) %>% count() %>% 
+  mutate(method="DLC")
+
+n_frames <- bind_rows(one, two)
+n_frames <- bind_rows(n_frames, three)
+rm(one, two, three)
+```
+
+
+```{r bind-slice}
+# to be able to calculate distances we need to trim
+# both df the same nrows
+keep_rows <- n_frames %>%
+  group_by(trial) %>%
+  summarise(rows = min(n))
+
+# bind and slice 
+flow_df <- flow_df %>%
+  mutate(trial = str_remove(filename, "_.+")) %>%
+  left_join(keep_rows, by="trial") %>%
+  filter(row_number() <= rows) 
+
+# nested version
+flow_nested <- flow_df %>%
+  select(trial, i_x, i_y) %>%
+  group_by(trial) %>%
+  nest()
+
+# bind and slice
+HSV_df <- HSV_df %>%
+  mutate(trial = str_remove(filename, "_.+")) %>%
+  left_join(keep_rows, by="trial") %>% 
+  group_by(trial) %>%
+  filter(row_number() <= rows)
+
+# nested version
+h <- HSV_df %>%
+  select(trial, x, y) %>%
+  group_by(trial) %>%
+  nest()
+
+# bind and slice
+dlc_cent <- dlc_cent %>% 
+  rename(trial=filename) %>% 
+  left_join(keep_rows, by="trial") %>% 
+  group_by(trial) %>% 
+  filter(row_number() <= rows)
+
+dlc_nested <- dlc_cent %>% 
+  select(trial, x, y) %>% 
+  group_by(trial) %>% 
+  nest()
+
+```
+
+
 
 ## Check interpolation
 
@@ -221,7 +321,6 @@ check_interpolation <- function(df, trial){
 }
 ```
 
-
 ```{r, warning=FALSE, cache=TRUE}
 trial_interp <- lapply(unique(flow_df$filename),
        function(x) check_interpolation(flow_df, x))
@@ -231,9 +330,8 @@ trial_interp <- lapply(unique(flow_df$filename),
 for (p in trial_interp){print(p)}
 ```
 
-
 ```{r path-multiplot}
-path_multiplot <- function(HSV_df, flow_df, trial){
+path_multiplot <- function(HSV_df, flow_df, dlc_df, trial){
   p1 <- filter(flow_df, str_detect(filename, trial)) %>%
   ggplot(aes(i_x,i_y)) +
   geom_path()+
@@ -243,6 +341,11 @@ path_multiplot <- function(HSV_df, flow_df, trial){
     ggplot(aes(x,y)) +
     geom_path()+
     ggtitle("HSV")
+  
+  pdlc <- filter(dlc_df, str_detect(filename, trial)) %>%
+  ggplot(aes(x,y)) +
+  geom_path()+
+  ggtitle("DLC")
 
   refCol <- colorRampPalette(rev(brewer.pal(6,'Spectral')))
   mycol <- refCol(6)
@@ -265,8 +368,17 @@ path_multiplot <- function(HSV_df, flow_df, trial){
     scale_fill_gradientn(colors =  mycol)+
     theme(legend.position = "none")
 
+    pdlc_2d <- filter(dlc_df, str_detect(filename, trial)) %>%
+    ggplot(aes(x,y)) +
+    stat_density2d(geom = 'tile', aes(fill = ..density..),
+                   contour = FALSE)+
+    coord_equal() +
+    theme_void() +
+    scale_fill_gradientn(colors =  mycol)+
+    theme(legend.position = "none")
+    
   final_plot <- cowplot::plot_grid(
-    p1, p2, p3, p4,
+    p1, p2, pdlc, p3, p4, pdlc_2d,
     nrow=2, align="tb"
     )
   
@@ -294,9 +406,7 @@ path_multiplot <- function(HSV_df, flow_df, trial){
 
 ```
 
-
 Using the interpolated xy positions from flow, we can compare to the HSV method.
-
 
 ```{r inspect-multiplot, warning=FALSE, message=FALSE, cache=TRUE}
 
@@ -304,10 +414,9 @@ clean_trials <- unique(flow_df$filename)
 clean_trials <- str_remove(clean_trials, "_.+")
   
 multiplot_interp <- lapply(clean_trials,
-       function(x) path_multiplot(HSV_df, flow_df, x))
+       function(x) path_multiplot(HSV_df, flow_df, dlc_df = dlc_cent, x))
 for (p in multiplot_interp){print(p)}
 ```
-
 
 ```{r, message=FALSE}
 time_df <- read_csv("open_field/results/hsv_flow_timing.csv") %>%
@@ -315,12 +424,11 @@ time_df <- read_csv("open_field/results/hsv_flow_timing.csv") %>%
   mutate(trial = str_remove(filename, "\\..+"))
 ```
 
-
 ## Time
 
 Ideally, we want to have something that can run on 'real-time' (between 20 and 30 frames per second). HSV methods can run much faster but will not be accurate on a homecage environment.
 
-```{r lollipop}
+```{r frame}
 ### get the frame counts ---- 
 one <- HSV_df %>%
   group_by(filename) %>%
@@ -337,6 +445,9 @@ two <- flow_df %>%
 n_frames <- bind_rows(one, two)
 rm(one, two)
 
+```
+
+```{r lollipop-computing-time}
 time_df %>% 
   left_join(n_frames, by=c("trial", "method")) %>%
   group_by(method) %>%
@@ -349,6 +460,7 @@ time_df %>%
            label="'real-time'", color="darkorange") +
   coord_flip()+
   labs(y="Speed\n(frames per second)", x="Quantification Method")
+
 ```
 
 
@@ -362,13 +474,13 @@ where
 
 $X(t)_{flow} = (x(t), y(t))$
 
-Ideally, we expect $d(t)$ normally distributed with mean 0 and var 
+Ideally, we expect $d(t)$ normally distributed with mean 0 and var
 
 $d(t) \sim \mathcal{N}(0, \sigma^2)$
 
 Visually,
 
-```{r, eval=FALSE, results="hide"}
+```{r trial1-video, eval=FALSE, results="hide"}
 # change to eval TRUE if you want to actually run it again
 my_video <- Rvision::video("open_field/videos/Trial1.mpg")
 
@@ -378,8 +490,8 @@ animation::saveGIF(
 for (tt in 1:50){
   i <- Rvision::readNext(my_video)
   plot(i)
-  points(flow_df$i_x[tt], 480-flow_df$i_y[tt], col="blue", pch=18)
-  points(HSV_df$x[tt], 480-HSV_df$y[tt], col="orange", pch=18)
+  points(flow_df$i_x[tt], 480-flow_df$i_y[tt], col="cyan", pch=20, cex=2)
+  points(HSV_df$x[tt], 480-HSV_df$y[tt], col="orange", pch=20, cex=2)
   text(100,480, sprintf("frame %s", tt))
   
 },
@@ -393,9 +505,9 @@ Rvision::release(my_video)
 knitr::include_graphics("hsv_flow_sample.gif")
 ```
 
-Here's the example of the same points, where the segment between points is the $d(t)$ that we want to estimate. 
+Here's the example of the same points, where the segment between points is the $d(t)$ that we want to estimate.
 
-```{r}
+```{r distance-gif}
 d_show <- flow_df %>% ungroup() %>%
   slice(1:50) %>%
   mutate(frame = 1:n())%>%
@@ -412,8 +524,6 @@ ggplot(d_show, aes(x,y)) +
   labs(title = 'Frame: {closest_state}')
 
 ```
-
-
 
 ```{r pair_xy_dist}
 # This function calculates xy distance row-wise between 2 dataframes
@@ -436,38 +546,19 @@ pair_xy_dist <- function(dataframe1, dataframe2){
 ```
 
 
+```{r}
+
+```
+
 
 ```{r, message=F}
-# to be able to calculate distances we need to trim
-# both df the same nrows
-keep_rows <- n_frames %>% group_by(trial) %>%
-  summarise(rows = min(n))
-
-# bind and slice
-
-flow <- flow_df %>%
-  mutate(trial = str_remove(filename, "_.+")) %>%
-  left_join(keep_rows, by="trial") %>%
-  filter(row_number() <= rows) %>%
-  ungroup() %>%
-  group_by(trial) %>%
-  select(trial, i_x, i_y) %>%
-  nest()
-
-h <- HSV_df %>%
-  mutate(trial = str_remove(filename, "_.+")) %>%
-  left_join(keep_rows, by="trial") %>%
-  group_by(trial) %>%
-  filter(row_number() <= rows) %>%
-  ungroup() %>%
-  group_by(trial) %>%
-  select(trial, x, y) %>%
-  nest()
-
 # now we join and get nested data frames by trial
 # we do mutate for each of the trials
-nested <- flow %>% left_join(h, by="trial") %>%
-  rename(flow=data.x, hsv=data.y) %>%
+nested <- flow %>% 
+  left_join(h, by="trial") %>%
+  rename(flow=data.x, hsv=data.y) %>% 
+  left_join(dlc_nested, by ="trial") %>% 
+  rename(dlc = data) %>% 
   # takes a while
   mutate(distance = map2(flow, hsv,
                          function(x,y) pair_xy_dist(x,y)))
@@ -478,18 +569,22 @@ distances <- nested %>% select(distance) %>% unnest(cols=c(distance))
 
 ```
 
-
 We see quite a lot of error and error dependent on the trial.
 
-```{r}
+```{r violin-error}
 ggplot(distances, aes(trial, distance)) +
-  geom_violin()
+  geom_violin(fill="orange", alpha=0.5)+
+  stat_summary(fun=mean, size=0.5)+
+  labs(title = "Flow vs HSV in open field",
+       subtitle = "Error computed as distance in px",
+       y="Error (px)",
+       x="")+
+  ggthemes::theme_clean()
 ```
 
 The distribution is bimodal and heavily skewed (probably some wrong detection jump is responsible for the very extreme ones).
 
-Most importantly `r scales::percent(mean(distances$distance < 50), accuracy = 0.01)` of the data is below 50px (~5 cm).
-
+Most importantly `r scales::percent(mean(distances$distance < 50), accuracy = 0.01)` of the data is below 50px (\~5 cm).
 
 ```{r pixel-calibration}
 
@@ -505,8 +600,6 @@ filter(HSV_df) %>%
 
 ```
 
-
-
 ```{r distance-density}
 
 # 50 cm * 50 px / px_box_side
@@ -519,25 +612,35 @@ lb <- paste0("~",
 )
 
 
-ggplot(distances, aes(distance)) +
-  geom_density(fill="gray20") +
-  geom_vline(xintercept = 50, col="red")+
-  annotate("text", x= 100, y = 0.01, label = lb)+
-  xlab("Distance (px)")
-```
+# make density df
+ddf <- with(density(distances$distance), data.frame(x,y))
 
+ggplot(ddf, aes(x, y)) +
+  geom_area(aes(fill=x<50))+
+  scale_fill_manual(values=c("gray90", "gray10"))+
+  geom_line() +
+  geom_vline(xintercept = 50, col="red")+
+  annotate("text", x= 100, y = 0.015, label = lb)+
+  xlab("Distance (px)")+
+  ggthemes::theme_clean()+
+  theme(legend.position = "none")+
+    labs(title = "Flow vs HSV in open field",
+       subtitle = "Error computed as distance in px",
+       y="Density",
+       x="Error(px)")
+```
 
 ## Movement
 
 We have 3 measures of pixel to pixel movement
 
-* Optic flow (arbitrary units)
-* Optic flow derived XY (px)
-* HSV (px)
+-   Optic flow (arbitrary units)
+-   Optic flow derived XY (px)
+-   HSV (px)
 
 We start with optic flow derived vs HSV and see whether we can get get a good correlation.
 
-```{r}
+```{r total-dist}
 total_dist <- function(x,y) {
   # default to NA on lag, correct later
   pre <- sqrt((x-lag(x))^2 + (y-lag(y)) ^2)
@@ -548,7 +651,7 @@ total_dist <- function(x,y) {
 ```
 
 
-```{r, message=F}
+```{r distance-df, message=F}
 
 distance_df <- nested %>%
   mutate(
@@ -562,38 +665,57 @@ distance_df <- nested %>%
     ),
     cum_dist_hsv = map(
       px_dist_hsv, function(tt) cumsum(tt)
-    )
+    ),
+    px_dist_dlc = map(
+      dlc, function(tt) total_dist(tt$x, tt$y)
+    ),
+    cum_dist_dlc = map(
+      px_dist_dlc, function(tt) cumsum(tt)
+      )
     ) %>% 
-  select(-flow, - hsv) %>%
-  unnest(cols = c(distance, px_dist_flow, cum_dist_flow, px_dist_hsv, cum_dist_hsv))
+  select(-flow, - hsv, -dlc) %>%
+  unnest(cols = c(distance, 
+                  px_dist_flow, cum_dist_flow,
+                  px_dist_hsv, cum_dist_hsv,
+                  px_dist_dlc, cum_dist_dlc))
+
+
+# Add movement from optical flow to the df
+# divide by 1000 to get smaller scale
+distance_df$opt_flow <- flow_df$movement/1000
 
 ```
-
 
 ```{r, message=F}
 distance_df %>%
-  ggplot(aes(px_dist_hsv, px_dist_flow)) + 
+ggplot(aes(px_dist_hsv,px_dist_flow)) +
   geom_point(alpha=0.1)+
-  facet_wrap(~trial)+
-  geom_smooth(method="lm")
+  facet_wrap(~trial, scales="free")+
+  #geom_smooth(method="lm")+
+  theme_bw()+
+  labs(title = "Correlation Optical flow vs HSV",
+       subtitle = "Point to point distance traveled",
+       x = "HSV distance (px)", y ="Optical flow (px)") 
 ```
-
-
 The correlation between movement and optic flow is quite good.
 
 ```{r, message=FALSE}
-distance_df$movement <- flow_df$movement
-ggplot(distance_df, aes(px_dist_hsv,movement)) +
+
+ggplot(distance_df, aes(px_dist_hsv,opt_flow)) +
   geom_point(alpha=0.1)+
-  facet_wrap(~trial)+
-  geom_smooth(method="lm")
+  facet_wrap(~trial, scales="free")+
+  #geom_smooth(method="lm")+
+  theme_bw()+
+  labs(title = "Correlation Optical flow vs HSV",
+       subtitle = "Point to point distance traveled",
+       x = "HSV distance (px)", y ="Optical flow (a.u.)") 
 ```
 
-## Cummulative distance analysis 
+## Cummulative distance analysis
 
 We can further check using cummulative distance on the px to px analysis.
 
-px_dist from flow vs px_dist_hsv
+px\_dist from flow vs px\_dist\_hsv
 
 ```{r }
 distance_df %>%
@@ -614,13 +736,53 @@ distance_df %>%
 ## Correlation analysis
 
 ```{r}
+nested_cormat <- distance_df %>% 
+  select(trial, opt_flow, px_dist_hsv, px_dist_flow, px_dist_dlc) %>% 
+  group_by(trial) %>% 
+  do(cormat = cor(select(., -trial)))
+
+```
+
+```{r}
+nested_cormat %>%
+  pull(cormat) %>%
+  melt() %>% 
+  rename(trial = L1) %>% 
+  mutate(trial=paste0("Trial", trial)) -> trial_cormat
+
+
+trial_cormat %>% 
+  ggplot(aes(Var1, Var2, fill=value))+
+  geom_tile(color="white")+
+  geom_text(aes(label=round(value,2)))+
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(x="", y="")+
+  facet_wrap(~trial)
+```
+
+```{r}
+trial_cormat %>%
+  filter(str_detect(Var1, pattern = "opt_flow") &
+        str_detect(Var2, pattern ="hsv|dlc")) %>% 
+  ggplot(aes(Var2, value))+
+  geom_boxplot()+
+  geom_point()+
+  ggthemes::theme_clean()+
+  labs(y="Correlation with optic flow", x="Method",
+       title="Distance derived from optic flow correlates with other methods")
+```
+
+
+```{r}
 
 group_corr <- 
 distance_df %>%
   group_by(trial) %>%
   summarise(r_mov_hsv = cor(movement, px_dist_hsv), 
             r_deriv_hsv = cor(px_dist_flow, px_dist_hsv),
-            r_deriv_mov = cor(px_dist_flow, movement)) %>% 
+            r_deriv_mov = cor(px_dist_flow, movement),
+            r_mov_dlc = cor(movment, px_dist_dlc)) %>% 
   pivot_longer(-trial, names_to = "method", names_prefix = "r_")
 
 group_corr %>%
@@ -632,7 +794,6 @@ group_corr %>%
 
 Another way to visualize these correlations is ploting the $r$ value for each trial vs each method.
 
-
 ```{r}
 group_corr %>%
   ggplot(aes(method, value))+
@@ -643,8 +804,7 @@ group_corr %>%
   geom_hline(yintercept = 1, lty=4)
 ```
 
-
-Or using a correlation matrix displaying the median correlation for each pair. 
+Or using a correlation matrix displaying the median correlation for each pair.
 
 ```{r}
 # I don't fully like this one
@@ -676,7 +836,6 @@ Or using a correlation matrix displaying the median correlation for each pair.
 
 ```
 
-
 ### Hardware and Software
 
 ```{r}
@@ -693,12 +852,9 @@ benchmarkme::get_cpu()[c("model_name", "no_of_cores")] %>%
 
 ```
 
-
-### R Session 
+### R Session
 
 ```{r}
 sessionInfo()
 
 ```
-
-
