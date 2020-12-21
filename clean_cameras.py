@@ -10,7 +10,7 @@ import os
 # it will also try to remove /media/pi/SD_card but give error because its busy
 os.system("find /media/pi ! -name 'main.py' -type f -exec rm -f {} +")
 # now the directories 
-os.system("find /media/pi ! -name 'main.py' -type d -exec rm -f {} +")
+os.system("find /media/pi ! -name 'main.py' -type d -exec rm -d {} +")
 
 # Color Cameras -----
 os.system("find /home/pi/homecage_quantification/ -name '*_opt_flow.csv' -type f -exec rm -f {} +")
