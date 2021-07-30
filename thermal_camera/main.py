@@ -81,13 +81,13 @@ blink(3)
 # Get time from raspberry
 
 while(True):
-    pyb.LED(3).on()
+    pyb.LED(1).on()
     data = usb.read()
     if data != None:
         if len(data) >= 4:
             # we want to check that starts with date and last element is ")"
             if data[:4] == b'date':
-                pyb.LED(3).off()
+                pyb.LED(1).off()
                 # now we parse the time
                 time_stamp = data[5:]
                 write_binary_time(time_stamp)
