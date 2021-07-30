@@ -6,206 +6,16 @@ library(shinycssloaders)
 library(shinyFiles)
 
 # Helper functions --------------------------------------------------------
-# data analysis
-median_filter <- function(x){
-    x <- runmed(x, 11, na.action = "na.omit", endrule = "keep")
-    # this is to fill NAs 
-    # do not remove na values when approx
-    # if the NA are at the edges extend the closest values
-    x <- zoo::na.approx(x, na.rm=F, rule=2)
-    return(x)
-}
-
-# data bin 
-aggregate_data <- function(df, interval) {
-    df %>% 
-        mutate(datetime = cut(datetime, interval)) %>% 
-        group_by(filename, datetime) %>% 
-        summarise (
-            movement = mean(movement),
-            x = first(x),
-            y = first(y),
-            i_x = first(i_x),
-            i_y = first(i_y)) %>% 
-        ungroup()
-}
-
-
-# add extra layers to data 
-add_extra <- function(df) {
-    mac_pattern <- "[:alnum:]{2}:[:alnum:]{2}:[:alnum:]{2}:[:alnum:]{2}:[:alnum:]{2}:[:alnum:]{2}"
-    
-    df <- df %>% 
-    mutate(
-        # assign mac
-        mac = str_extract(filename,
-                          pattern = mac_pattern),
-        # make shift to ZT
-        time = data.table::as.ITime(datetime),
-        zt = datetime - lights_on_sec,
-        light_hours = time - data.table::as.ITime(lights_on),
-        # make condition
-        lights = factor(ifelse(between(time, lights_on, lights_off),
-                               "lights-on", "lights-off"),
-                        levels = c("lights-on", "lights-off"))
-    )
-    return(df)
-}
-
-
-# Read config files -------------------------------------------------------
-
-read_config_files <- function(target_date){
-    dirs <- list.dirs(path = "/home/choilab/raspberry_IP/", recursive=FALSE)
-    pattern_to_find <- paste0(target_date,".*_config.csv")
-    files_inside <- lapply(dirs, function(tt) list.files(tt, pattern = pattern_to_find, full.names=TRUE)) %>%
-        unlist()
-    col_classes <- cols(
-        mac = col_character(),
-        date = col_character(),
-        ID = col_character(),
-        Treatment = col_character(),
-        Dose = col_character(),
-        Comment = col_character()
-    )
-    configs <- purrr::map(files_inside, function(x) read_csv(x, col_types = col_classes)) %>% bind_rows() 
-    if (nrow(configs) > 0) {
-        configs <- configs %>% rename(datetime = date)
-    }
-    return(configs)
-}
-
-
-# Match configs with data -------------------------------------------------
-
-
-match_by_group_date <- function(df1, df2, grp, datecol) {
-    
-    grp1 <- df1 %>% pull({{grp}}) %>% unique()
-    grp2 <- df2 %>% pull({{grp}}) %>% unique()
-    
-    li <-
-        lapply(intersect(grp1, grp2), function(tt) {
-            d1 <- filter(df1, {{grp}}== tt)
-            d2 <- filter(df2, {{grp}}==tt) %>% mutate(indices = 1:n())
-            d2_date <- d2 %>% pull({{datecol}}) %>% as.POSIXct()
-            d1 <- mutate(d1, indices = map_dbl({{datecol}}, function(d) which.min(abs(d2_date - as.POSIXct(d)))))
-            
-            left_join(d1,d2, by=c(quo_name(enquo(grp)), "indices"))
-        })
-    
-    # bind rows
-    return(bind_rows(li) %>% rename(datetime = datetime.x, exp_start = datetime.y))
-}
-
-
-
-# Functions to make plots -------------------------------------------------
-
-lineplot <- function(df, x_axis){
-    
-    x_lab <- case_when(x_axis == "datetime" ~ "Clock Time",
-                       x_axis == "ZT" ~ "ZT",
-                       x_axis == "Hours from lights-on" ~ "Hours from lights-on")
-    
-    p <- switch(x_axis,
-                "datetime" = ggplot(df, aes(datetime, movement, group=mac, color=mac))+
-                    light_shade(df, mode="datetime") +
-                    scale_x_datetime(breaks = "2 hour",
-                                     date_labels = "%H:%M"),
-                "ZT" = ggplot(df, aes(zt, movement, group=mac, color=mac))+
-                    light_shade(df, mode = "zt") +
-                    scale_x_datetime(breaks = "2 hour",
-                                     date_labels = "%H:%M"),
-                "Hours from lights-on" = ggplot(df, aes(as.POSIXct(light_hours), movement, group=mac, color=mac))+
-                    scale_x_datetime(breaks= "2 hour",
-                                     date_labels = "%H:%M")+
-                    annotate("rect",
-                             xmin = as.POSIXct(data.table::as.ITime("12:00:00")),
-                             xmax = as.POSIXct(data.table::as.ITime("23:59:59")),
-                             ymin = -Inf, ymax = Inf,
-                             alpha = 0.2, fill = "gray50")
-                )
-    
-        p +
-        geom_line()  +
-        labs(title = "Movement", x = x_lab) +
-        theme_lineplot -> p
-    return(p)
-    
-}
-
-make_heatmap <- function(df){
-    
-    p <- ggplot(df %>% mutate(day = lubridate::date(datetime)),
-                aes(i_x, i_y)) +
-        # If you want to make sure the peak intensity is the same in each facet,
-        # use `contour_var = "ndensity"`.
-        geom_density_2d_filled(contour_var = "ndensity") +
-        #   geom_path(alpha=0.1, color="white") +
-        facet_grid(day~mac)+
-        theme_void()+
-        theme(legend.position="bottom")+
-        # add the box limits (somewhat by eye from clean_cage_snapshot.png)
-        annotate("rect", xmin=20, xmax=500, ymin=0, ymax=480, lwd=1, fill=NA, color="red")
-        coord_cartesian(xlim=c(0,640), ylim=c(0,480))
-        return(p)
-}
-
-# Themes for graphs
-
-theme_lineplot <- cowplot::theme_half_open() +
-    theme(legend.position = "bottom",
-          panel.grid = element_blank()) 
-
-light_shade <- function(df, mode="datetime"){
-    
-    # let's build this summary for later parsing dates
-    # and returning proper format
-    df_on <- df %>%
-        # just in case we have more than one day
-        mutate(day = date(datetime)) %>%
-        group_by(day) %>%
-        mutate(min_datetime = min(datetime),
-               max_datetime = max(datetime),
-               min_zt = min(zt),
-               max_zt = max(zt)) %>% 
-        filter(lights=="lights-on") %>%
-        summarise(min_datetime = unique(min_datetime),
-                  max_datetime = unique(max_datetime),
-                  min_zt = unique(min_zt),
-                  max_zt = unique(max_zt),
-                  first_dt_on = first(datetime),
-                  last_dt_on = last(datetime),
-                  first_zt_on = first(zt),
-                  last_zt_on = last(zt)
-        ) 
-    
-    #View(df_on)
-    
-    switch(mode,
-            # annotate in two layers
-            # to do so, we cant `+`, we put them in a list
-            "datetime" = list(
-                annotate("rect",
-                         xmin = df_on$min_datetime,
-                         xmax = df_on$first_dt_on,
-                         ymin = -Inf, ymax = Inf,
-                         alpha = 0.2, fill = "gray50"),
-                annotate("rect",
-                         xmin = df_on$last_dt_on,
-                         xmax = df_on$max_datetime,
-                         ymin = -Inf, ymax = Inf,
-                         alpha = 0.2, fill = "gray50")
-            ),
-            "zt" = annotate("rect",
-                            xmin= df_on$last_zt_on,
-                            xmax = df_on$max_datetime,
-                            ymin = -Inf, ymax = Inf,
-                            alpha = 0.2, fill = "gray50")
-    )
-    
-}
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/median_filter.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/aggregate_data.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/add_extra.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/read_config_files.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/match_by_group_date.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/lineplot.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/make_heatmap.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/light_shade.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/repair_baseline.R")
+source("/home/choilab/homecage_quantification/flow_data_analysis/R/between_times.R")
 
 # time bins
 time_bins <- c("10 sec", "1 min", "5 min")
@@ -436,15 +246,28 @@ server <- function(input, output, session) {
         df <- bind_rows(li) 
 
         
-        # clean -----
+        # clean and smooth -----
         print("Smoothing with median filter")
         df <- df %>% 
             group_by(filename) %>%
+            # remove first movement value (it's zero and will mess up the baseline)
+            slice(-1) %>% 
+            # convert to NA values that are too big,
+            # we will have a few extreme values when we have shifts from night to dark mode
+            mutate(movement = ifelse(movement > 2e05, NA, movement),
+                   movement = zoo::na.approx(movement, na.rm=F, rule=2)) %>% 
             # interpolated xy
             mutate(i_x = median_filter(x),
                    i_y = median_filter(y)) %>% 
             ungroup() 
         
+        print("Smoothing baseline")
+        df <- df %>% 
+            mutate(lights_on = between_times(datetime, lights_on, lights_off)) %>% 
+            group_by(filename, lights_on) %>% 
+            mutate(movement = repair_baseline(movement)) %>% 
+            select(-lights_on)
+            
         print(df[nrow(df), "filename"])
 
         removeModal()
@@ -535,7 +358,7 @@ server <- function(input, output, session) {
                      # call the reactive function
                      sum_df <- read_aggregate_data(bin_pattern)
                      # add the extra info layers
-                     sum_df <- add_extra(sum_df)
+                     sum_df <- add_extra(sum_df, lights_on, lights_off)
                      # go get the config files
                      target_dates <- sum_df %>%
                          mutate(datetime = str_extract(string = datetime,
