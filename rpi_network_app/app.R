@@ -10,6 +10,8 @@ library(DT)
 # we are using shinyFiles instead
 library(shinyFiles)
 
+
+# General info pooling helpers --------------------------------------------
 # helper function to scan pi directory
 scan_pi_folder <- function(pi_folder){
     ip <- list.files(pi_folder, pattern="_ip.txt", full.names = TRUE)
@@ -54,6 +56,8 @@ pool_ip <- function(){
     return(ip_list)    
 }
 
+
+# Process IP data function ------------------------------------------------
 # helper to process data
 process_data <- function(ip_list){
     # To understand this command and see the previous lapply version
@@ -97,12 +101,12 @@ process_data <- function(ip_list){
 
 # Pool raspberry data -----------------------------------------------------
 read_opt_flow <- function(file){
-    # guess columns for back-ward compatibility
+    # guess columns for backward compatibility
     fake <- read_csv(file, n_max = 10)
     
     if(ncol(fake) > 1){
         flow_df <- read_csv(file, col_names = c("datetime", "movement", "x", "y")) %>%
-                    # replace first elment by zero
+                    # replace first element by zero
                     mutate(movement = replace(movement, 1, 0))
         # clean and transform to numeric
         flow_df <- flow_df %>% 
@@ -111,7 +115,7 @@ read_opt_flow <- function(file){
     
     } else {
         flow_df <- read_csv(file, col_names = c("movement")) %>%
-            # replace first elment by zero
+            # replace first element by zero
             mutate(total_flow = replace(movement, 1, 0))
     }
     return(flow_df)
@@ -180,6 +184,8 @@ pool_movement_data <- function(date){
         }
     } 
 
+
+# Requests using sshpass --------------------------------------------------
 # helper to call raspberries from central computer
 # this relies on sshpass and it's not the safest way to do it but it's probably fine
 
@@ -201,7 +207,6 @@ request_movement_data <- function(df, date){
     pooled_data <- pool_movement_data(date)
     return(pooled_data)
 }
-
 
 request_thermal_data <- function(df, date){
     # Give some user feedback on UI
@@ -225,6 +230,29 @@ request_thermal_data <- function(df, date){
     result <- order_imgs()
     return(result)
 }
+
+request_delete_data <- function(df){
+    # Give some user feedback on UI
+    showModal(modalDialog("Deleting data... Please wait."))
+    for (machine in df$ip){
+        print(paste("Trying to connect to", machine))
+        python_command <- 'python3 /home/pi/homecage_quantification/clean_cameras.py'
+        # create request call
+        cmd_command <- paste0(" timeout 10s sshpass -p 'choilab' ssh -tt pi@", machine)
+        # add python call to the sshpass
+        cmd_command <- paste(cmd_command, python_command)
+        print(cmd_command)
+        system(cmd_command)
+    }
+    print("Done")
+    removeModal()
+    # order files into folders
+    # mac/img/date
+    # this will return either "files were moved"/"no files"
+    result <- order_imgs()
+    return(result)
+}
+
 
 # helper to order thermal images ----
 order_imgs <- function(){
@@ -324,6 +352,12 @@ ui <- fluidPage(
                    dateInput("thermal_date", value=Sys.Date(), label = "Select experiment date")),
             column(width = 4, style = "margin-top: 25px;", #margin-top needed for alignment
                    actionButton("retrieve_thermal", "Get data"))
+            ),
+            hr(),
+            fluidRow(
+                h4(strong("Delete camera storage")),
+                column(width = 4, style = "margin-top: 25px;", #margin-top needed for alignment
+                       actionButton("delete_data", "Delete data", icon=icon("trash")))
             )
         )
     )
@@ -476,7 +510,32 @@ server <- function(input, output, session) {
             showNotification("Data retrieved :)", type = "message")    
         }
     })
-    
+    # delete data observer ---
+    observeEvent(input$delete_data, {
+        # let's make sure the user understand what will happen
+        # we can use a modal to get user confirmation
+        # the gist comes from https://stackoverflow.com/questions/31107645/shiny-how-to-create-a-confirm-dialog-box
+        showModal(modalDialog(
+            easyClose = FALSE,
+            tagList(
+                strong(h4("Caution, you are about to delete all data!")),
+                h5("Thermal and movement data from all connected machines will be erased")
+            ), 
+            title=span(tagList(icon("trash"), "Delete all files")),
+            footer = tagList(actionButton("confirm_delete", "Delete", 
+                                          icon=icon("trash"), 
+                                          class = "btn-danger"),
+                             modalButton("Cancel")
+            )
+        ))
+        
+    })
+    # actually delete
+    observeEvent(input$confirm_delete, {
+        # This removes the previous
+        removeModal()
+        request_delete_data(df)
+    })
 
 }
 
