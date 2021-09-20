@@ -56,6 +56,16 @@ pool_ip <- function(){
     return(ip_list)    
 }
 
+# check ssh
+check_ssh <- function(ip){
+    cmd_command <- glue::glue(" sshpass -p 'choilab' ssh -o ConnectTimeout=2 pi@{ip} exit")
+    status <- system(cmd_command, intern=T)
+    # this returns a vector with character(0) and a status attribute that informs what happened
+    # if the attr is NULL the connection was successful 
+    condition_ok <- identical(character(0), status) & is.null(attr(status, "status"))
+    output <- ifelse(condition_ok, "OK", paste("Error:", attr(status, "status")))
+    return(output)
+}
 
 # Process IP data function ------------------------------------------------
 # helper to process data
@@ -94,7 +104,9 @@ process_data <- function(ip_list){
             stream = shinyInput(actionButton, nrow(df),
                                 'button_', label = "View",
                                 onclick = 'Shiny.onInputChange(\"select_button\",  this.id)' )
-        )
+        ) %>% 
+        rowwise() %>% 
+        mutate(status = check_ssh(ip))
     return(df)
 }
 
