@@ -90,7 +90,7 @@ class App():
 		# start thermal
 		self.thermal_button = tkinter.Button(self.frame,
 		 text="Start Thermal",
-		 command=self.trigger_thermal,
+		 command=self.start_thermal,
 		 pady=20, bg=self.button_color, highlightbackground="black")
 		self.thermal_button.pack(pady=5)
 
