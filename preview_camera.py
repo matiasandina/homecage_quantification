@@ -4,19 +4,19 @@ from camera import VideoCamera
 import cv2
 import signal
 
-cam = VideoCamera(
-	flip = False, 
-	usePiCamera = False, 
-	resolution = (640, 480),
-	record = False,
-	record_timestamp = True
-	)
-
 def exit_gracefully(self, *args):
     cv2.destroyAllWindows()
     sys.exit(0)
 
 def run():
+    cam = VideoCamera(
+    flip = False, 
+    usePiCamera = False, 
+    resolution = (640, 480),
+    record = False,
+    record_timestamp = True
+    )
+
     signal.signal(signal.SIGINT, exit_gracefully)
     signal.signal(signal.SIGTERM, exit_gracefully)
     while(True):
@@ -28,6 +28,7 @@ def run():
         if k == ord("q"):
             break
     cv2.destroyAllWindows()
+    cam.release
 
 if __name__ == '__main__':
 	run()
