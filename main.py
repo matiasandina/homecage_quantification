@@ -89,7 +89,7 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def exit_gracefully(self, *args):
-	video_camera.stop()
+	video_camera.__del__()
 	sys.exit(0)
 
 def preview_camera():

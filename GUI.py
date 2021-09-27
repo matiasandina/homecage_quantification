@@ -224,6 +224,7 @@ class App():
 	def start_experiment(self):
 		all_set = self.check_input()
 		if all_set:
+			self.stop_exp_button.config(state="normal")
 			self.save_data()
 			#os.system("python3 /home/pi/homecage_quantification/main.py")
 			self.main_process.start()
