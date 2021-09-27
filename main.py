@@ -16,7 +16,14 @@ import signal
 
 # Modified Matias Andina 2020-02-01
 
+# App Globals (do not edit)
+app = Flask(__name__)
+app.config['BASIC_AUTH_USERNAME'] = 'choilab'
+app.config['BASIC_AUTH_PASSWORD'] = 'choilab'
+app.config['BASIC_AUTH_FORCE'] = True
 
+# authorization and other things
+basic_auth = BasicAuth(app)
 
 def running_flag():
 	# caution this only works for raspberry PIs on WiFI
@@ -51,6 +58,8 @@ def get_ip_address(remote_server="google.com"):
 		s.connect((remote_server, 80))
 		return s.getsockname()[0]
 
+@app.route('/')
+@basic_auth.required
 def index():
     return render_template('index.html')
 
@@ -63,13 +72,14 @@ def gen(camera):
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
 
+@app.route('/video_feed')
 def video_feed():
     return Response(gen(video_camera),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def exit_gracefully(self, *args):
 	video_camera.release
-    sys.exit(0)
+	sys.exit(0)
 
 
 def run():
@@ -82,19 +92,6 @@ def run():
 		record = False,
 		record_timestamp = True
 		) 
-
-	# App Globals (do not edit)
-	app = Flask(__name__)
-	app.config['BASIC_AUTH_USERNAME'] = 'choilab'
-	app.config['BASIC_AUTH_PASSWORD'] = 'choilab'
-	app.config['BASIC_AUTH_FORCE'] = True
-
-	# authorization and other things
-	basic_auth = BasicAuth(app)
-	@app.route('/')
-	@basic_auth.required
-	@app.route('/video_feed')
-
 
 	signal.signal(signal.SIGINT, exit_gracefully)
 	signal.signal(signal.SIGTERM, exit_gracefully)
