@@ -9,6 +9,7 @@ from opt_flow import opt_flow
 import datetime
 import socket
 import os
+import signal
 
 # source
 # https://github.com/HackerShackOfficial/Smart-Security-Camera
@@ -84,6 +85,27 @@ def gen(camera):
 def video_feed():
     return Response(gen(video_camera),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def exit_gracefully(self, *args):
+    sys.exit(0)
+
+
+def run():
+    signal.signal(signal.SIGINT, exit_gracefully)
+    signal.signal(signal.SIGTERM, exit_gracefully)
+    # start the opt_flow program
+    t = threading.Thread(target=calculate_flow, args=())
+    t.daemon = True
+    t.start()
+    # make a flag to save a small file with the date
+    # this will be read by central computer 
+    running_flag_thread = threading.Thread(target=running_flag, args=())
+    running_flag_thread.daemon = True
+    running_flag_thread.start()
+    # start the app streaming 
+    print("To see feed connect to " + get_ip_address() + ":5000")
+    # to do, read ifconfig and assign IP using raspberry's IP
+    app.run(host='0.0.0.0', port = 5000, debug=False)
 
 if __name__ == '__main__':
     # start the opt_flow program

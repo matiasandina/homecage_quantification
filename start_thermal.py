@@ -1,6 +1,15 @@
 # This script will allow you to trigger the openMV board
 # It will automatically stop after a number of retries
 
+
+# ------------------------------------------------------------------------------------- #
+# This script is now obsolete because the RTC on the thermal camera is not good enough to keep accurate time
+# We are triggering using the trigger_thermal.py script, which uses the RPi clock to trigger pictures
+# We also modified the original main.py on the thremal camera side
+# 2021-09-27 MLA
+# ------------------------------------------------------------------------------------- #
+
+#
 import sys, serial, struct
 import datetime
 import time

@@ -5,6 +5,10 @@ import pandas as pd
 import numpy as np
 import tkinter.ttk as ttk
 import datetime
+import multiprocessing as mp
+import main
+import trigger_thermal
+import preview_camera
 
 class App():
 	def __init__(self, window, window_title):
@@ -86,15 +90,17 @@ class App():
 		# start thermal
 		self.thermal_button = tkinter.Button(self.frame,
 		 text="Start Thermal",
-		 command=self.start_thermal,
+		 command=self.trigger_thermal,
 		 pady=20, bg=self.button_color, highlightbackground="black")
 		self.thermal_button.pack(pady=5)
+
 		# preview camera button
 		self.cam_button = tkinter.Button(self.frame,
 		 text="Preview Camera",
 		 command=self.preview_camera,
 		 pady=20, bg=self.button_color, highlightbackground="black")
 		self.cam_button.pack(pady=5)
+
 		# start experiment
 		self.exp_button = tkinter.Button(self.frame,
 		 text="Start Experiment",
@@ -102,10 +108,19 @@ class App():
 		 state=tkinter.DISABLED,
 		 pady=20, bg=self.button_color, highlightbackground="black")
 		self.exp_button.pack(pady=5)
+		self.exp_button.pack(pady=5)
+
+		# stop experiment
+		self.stop_exp_button = tkinter.Button(self.frame,
+		 text="Stop Experiment",
+		 command=self.stop_experiment,
+		 state=tkinter.DISABLED,
+		 pady=20, bg=self.button_color, highlightbackground="black")
+		self.stop_exp_button.pack(pady=5)
+
 		# on closing, ask before closing
 		self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
 		# Define the different GUI widgets
-
 
 		# Set the treeview
 		self.treeview_columns = ['mac', 'date', 'ID', 'Treatment', 'Dose', 'Comment']
@@ -146,6 +161,14 @@ class App():
 		# this gives priority to entry boxes
 		# because of this, they will resize and fill space with the menu_left_upper
 		self.menu_left_upper.grid_columnconfigure(1, weight=1)
+		# Processes for controlling other code (thermal, preview, main)
+		# to run a process, use process.start()
+		# to end a process peacefully, use process.join(), this will wait for it to be done
+		# to end a process immediately (for infinite loops), use process.terminate(), gives it a SIGTERM signal which you can use to close the loop peacefully,
+		#   see https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully for example
+		self.thermal_process = mp.Process(target=start_thermal.run, args=())
+		self.preview_camera_process = mp.Process(target=preview_camera.run, args=())
+		self.main_process = mp.Process(target=main.run, args=())
 
 	def get_mac(self):
 		# This is good for Raspberry PIs, not good for other OS !
@@ -186,10 +209,13 @@ class App():
 
 	# button callbacks ------
 	def start_thermal(self):
-		os.system("python3 /home/pi/homecage_quantification/start_thermal.py")
+		#os.system("python3 /home/pi/homecage_quantification/start_thermal.py")
+		self.stop_exp_button.config(state="normal")
+		self.thermal_process.start()
 
 	def preview_camera(self):
-		os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
+		#os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
+		self.preview_camera_process.start()
 		# only now we enable the experiment button
 		self.exp_button.config(state="normal") 
 
@@ -197,11 +223,21 @@ class App():
 		all_set = self.check_input()
 		if all_set:
 			self.save_data()
-			os.system("python3 /home/pi/homecage_quantification/main.py")
+			#os.system("python3 /home/pi/homecage_quantification/main.py")
+			self.main_process.start()
 		else:
 			tkinter.messagebox.showinfo("Config File Missing",
 			 "Please make sure you have entered at least animal ID.\nDelete entries with empty values and begin again.")
 
+	def stop_experiment(self):
+		# delete entries
+		self.treeview.delete(*self.treeview.get_children())
+		print("Stop thermal camera in process")
+		self.thermal_process.terminate()
+		print("Thremal camera stopped :)") 
+		print("Stop optic flow in process")
+		self.main_process.terminate()
+		print("Optic flow stopped :)")
 
 	def check_input(self):
 		# this function checks whether we have a correct config file
