@@ -166,7 +166,7 @@ class App():
 		# to end a process peacefully, use process.join(), this will wait for it to be done
 		# to end a process immediately (for infinite loops), use process.terminate(), gives it a SIGTERM signal which you can use to close the loop peacefully,
 		#   see https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully for example
-		self.thermal_process = mp.Process(target=start_thermal.run, args=())
+		self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
 		self.preview_camera_process = mp.Process(target=preview_camera.run, args=())
 		self.main_process = mp.Process(target=main.run, args=())
 
