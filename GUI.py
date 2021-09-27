@@ -6,7 +6,7 @@ import numpy as np
 import tkinter.ttk as ttk
 import datetime
 import multiprocessing as mp
-import main
+#import main
 import trigger_thermal
 import preview_camera
 
@@ -218,6 +218,8 @@ class App():
 		self.preview_camera_process.start()
 		# only now we enable the experiment button
 		self.exp_button.config(state="normal") 
+		# we have to restart the process after it gets terminated by user
+		self.preview_camera_process = mp.Process(target=preview_camera.run, args=())
 
 	def start_experiment(self):
 		all_set = self.check_input()
@@ -234,10 +236,13 @@ class App():
 		self.treeview.delete(*self.treeview.get_children())
 		print("Stop thermal camera in process")
 		self.thermal_process.terminate()
-		print("Thremal camera stopped :)") 
+		# initiate new one
+		self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
+		print("Thremal camera stopped. Ready to start again.") 
 		print("Stop optic flow in process")
 		self.main_process.terminate()
-		print("Optic flow stopped :)")
+		self.main_process = mp.Process(target=main.run, args=())
+		print("Optic flow stopped. Ready to start again :)")
 
 	def check_input(self):
 		# this function checks whether we have a correct config file
