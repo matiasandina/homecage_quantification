@@ -6,9 +6,9 @@ import numpy as np
 import tkinter.ttk as ttk
 import datetime
 import multiprocessing as mp
-#import main
+import main
 import trigger_thermal
-import preview_camera
+#import preview_camera
 
 class App():
 	def __init__(self, window, window_title):
@@ -167,7 +167,7 @@ class App():
 		# to end a process immediately (for infinite loops), use process.terminate(), gives it a SIGTERM signal which you can use to close the loop peacefully,
 		#   see https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully for example
 		self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
-		self.preview_camera_process = mp.Process(target=preview_camera.run, args=())
+		self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
 		self.main_process = mp.Process(target=main.run, args=())
 
 	def get_mac(self):

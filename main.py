@@ -16,6 +16,17 @@ import signal
 
 # Modified Matias Andina 2020-02-01
 
+# creates a camera object don't flip vertically
+# we will not use this camera to record
+# This is a global object, shared between many functions
+# once created it will also block other processes from using the camera
+	video_camera = VideoCamera(
+		flip = False, 
+		usePiCamera = False, 
+		resolution = (640, 480),
+		record = False,
+		record_timestamp = True
+		) 
 # App Globals (do not edit)
 app = Flask(__name__)
 app.config['BASIC_AUTH_USERNAME'] = 'choilab'
@@ -81,18 +92,19 @@ def exit_gracefully(self, *args):
 	video_camera.release
 	sys.exit(0)
 
+def preview_camera():
+	while(True):
+		frame = video_camera.read()
+		cv2.putText(frame, "Preview:",(10, 50),cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
+		cv2.putText(frame, "press 'q' to quit",(10, 100),cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 1)
+		cv2.imshow("preview", frame)
+		k = cv2.waitKey(1)
+		if k == ord("q"):
+			break
+		cv2.destroyAllWindows()
+
 
 def run():
-	# creates a camera object, don't flip vertically
-	# we will not use this camera to record
-	video_camera = VideoCamera(
-		flip = False, 
-		usePiCamera = False, 
-		resolution = (640, 480),
-		record = False,
-		record_timestamp = True
-		) 
-
 	signal.signal(signal.SIGINT, exit_gracefully)
 	signal.signal(signal.SIGTERM, exit_gracefully)
 	# start the opt_flow program
