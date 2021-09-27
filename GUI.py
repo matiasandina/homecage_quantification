@@ -235,15 +235,17 @@ class App():
 	def stop_experiment(self):
 		# delete entries
 		self.treeview.delete(*self.treeview.get_children())
-		print("Stop thermal camera in process")
-		self.thermal_process.terminate()
-		# initiate new one
-		self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
-		print("Thremal camera stopped. Ready to start again.") 
-		print("Stop optic flow in process")
-		self.main_process.terminate()
-		self.main_process = mp.Process(target=main.run, args=())
-		print("Optic flow stopped. Ready to start again :)")
+		if self.thermal_process.is_alive():
+			print("Stop thermal camera in process")
+			self.thermal_process.terminate()
+			# initiate new one
+			self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
+			print("Thremal camera stopped. Ready to start again.") 
+		if self.main_process.is_alive():
+			print("Stop optic flow in process")
+			self.main_process.terminate()
+			self.main_process = mp.Process(target=main.run, args=())
+			print("Optic flow stopped. Ready to start again :)")
 
 	def check_input(self):
 		# this function checks whether we have a correct config file
