@@ -219,7 +219,7 @@ class App():
 		# only now we enable the experiment button
 		self.exp_button.config(state="normal") 
 		# we have to restart the process after it gets terminated by user
-		self.preview_camera_process = mp.Process(target=preview_camera.run, args=())
+		self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
 
 	def start_experiment(self):
 		all_set = self.check_input()
