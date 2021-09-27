@@ -6,7 +6,7 @@ import numpy as np
 import tkinter.ttk as ttk
 import datetime
 import multiprocessing as mp
-import main
+#import main
 import trigger_thermal
 #import preview_camera
 
@@ -167,8 +167,8 @@ class App():
 		# to end a process immediately (for infinite loops), use process.terminate(), gives it a SIGTERM signal which you can use to close the loop peacefully,
 		#   see https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully for example
 		self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
-		self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
-		self.main_process = mp.Process(target=main.run, args=())
+		#self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
+		#self.main_process = mp.Process(target=main.run, args=())
 
 	def get_mac(self):
 		# This is good for Raspberry PIs, not good for other OS !
@@ -214,12 +214,12 @@ class App():
 		self.thermal_process.start()
 
 	def preview_camera(self):
-		#os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
-		self.preview_camera_process.start()
+		os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
+		#self.preview_camera_process.start()
 		# only now we enable the experiment button
-		self.exp_button.config(state="normal") 
+		#self.exp_button.config(state="normal") 
 		# we have to restart the process after it gets terminated by user
-		self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
+		#self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
 
 	def start_experiment(self):
 		all_set = self.check_input()
