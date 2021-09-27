@@ -217,7 +217,7 @@ class App():
 		os.system("python3 /home/pi/homecage_quantification/preview_camera.py")
 		#self.preview_camera_process.start()
 		# only now we enable the experiment button
-		#self.exp_button.config(state="normal") 
+		self.exp_button.config(state="normal") 
 		# we have to restart the process after it gets terminated by user
 		#self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
 
