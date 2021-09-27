@@ -4,9 +4,22 @@ import sys, serial, struct
 import datetime
 import time
 import signal
+from collections import deque
+import numpy as np
 
+def save_deque(samples, timestamps, filename):
+	# because we are clearing the deque each time
+	# we don't have to worry about having unsaved elements
+    #print("Saving thermal timestap on iteration..." + str(samples[-1]))
+    # array with timestamp and deque to save, transpose for having them as cols
+    d = np.array([samples, timestamps]).T
+    with open(filename,'a') as outfile:
+        np.savetxt(outfile, d,
+        delimiter=',', fmt='%s')
+    return
 
 def exit_gracefully(self, *args):
+	save_deque(samples, timestamps, filename)
     sys.exit(0)
 
 def run(seconds_delay = 30):
@@ -24,6 +37,8 @@ def run(seconds_delay = 30):
 			time.sleep(2)
 			pass
 
+	samples = deque(maxlen=10)
+	timestamps = deque(maxlen = 10)
 
 	sample_num = 1
 	while(True):
@@ -41,7 +56,20 @@ def run(seconds_delay = 30):
 			print(message.encode())
 			sp.write(message.encode())
 			sample_num = sample_num + 1
+			# create_filename
+			if sample_num == 1:
+				filename = now.strftime("%Y-%m-%dT%H-%M-%S") + "_thermal_timestamps.csv.gz"
 
+			# append to deques
+			samples.append(sample_num)
+			timestamps.append(now)
+
+			if sample_num % 10 == 0:
+				save_deque(samples, timestamps, filename)
+				# reset values
+				samples.clear()
+				timestamps.clear()
+			# sleep using delay
 			time.sleep(seconds_delay)
 
 if __name__ == '__main__':
