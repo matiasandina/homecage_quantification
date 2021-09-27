@@ -28,7 +28,6 @@ def run():
         if k == ord("q"):
             break
     cv2.destroyAllWindows()
-    cam.release
 
 if __name__ == '__main__':
 	run()
