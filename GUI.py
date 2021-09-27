@@ -226,8 +226,8 @@ class App():
 		if all_set:
 			self.stop_exp_button.config(state="normal")
 			self.save_data()
-			#os.system("python3 /home/pi/homecage_quantification/main.py")
-			self.main_process.start()
+			os.system("python3 /home/pi/homecage_quantification/main.py")
+			#self.main_process.start()
 		else:
 			tkinter.messagebox.showinfo("Config File Missing",
 			 "Please make sure you have entered at least animal ID.\nDelete entries with empty values and begin again.")
