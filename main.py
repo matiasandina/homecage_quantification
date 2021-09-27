@@ -20,13 +20,13 @@ import signal
 # we will not use this camera to record
 # This is a global object, shared between many functions
 # once created it will also block other processes from using the camera
-	video_camera = VideoCamera(
-		flip = False, 
-		usePiCamera = False, 
-		resolution = (640, 480),
-		record = False,
-		record_timestamp = True
-		) 
+video_camera = VideoCamera(
+	flip = False, 
+	usePiCamera = False, 
+	resolution = (640, 480),
+	record = False,
+	record_timestamp = True
+	) 
 # App Globals (do not edit)
 app = Flask(__name__)
 app.config['BASIC_AUTH_USERNAME'] = 'choilab'
@@ -101,7 +101,7 @@ def preview_camera():
 		k = cv2.waitKey(1)
 		if k == ord("q"):
 			break
-		cv2.destroyAllWindows()
+	cv2.destroyAllWindows()
 
 
 def run():
