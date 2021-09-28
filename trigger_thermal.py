@@ -9,8 +9,9 @@ import numpy as np
 
 class Thermal():
 	"""docstring for Thermal"""
-	def __init__(self):
+	def __init__(self, seconds_delay):
 		super(Thermal, self).__init__()
+		self.seconds_delay = seconds_delay
 		
 	def save_deque(self):
 		# because we are clearing the deque each time
@@ -25,9 +26,15 @@ class Thermal():
 
 	def exit_gracefully(self, *args):
 		self.save_deque()
+		self.reset_lepton()
 		sys.exit(0)
 
-	def run(self, seconds_delay = 0.5):
+	def reset_lepton(self):
+		'''This function will send a message to trigger the lepton reset'''
+		# TODO
+
+
+	def run(self):
 
 		signal.signal(signal.SIGINT, self.exit_gracefully)
 		signal.signal(signal.SIGTERM, self.exit_gracefully)
@@ -35,24 +42,25 @@ class Thermal():
 		self.samples = deque(maxlen=10)
 		self.timestamps = deque(maxlen = 10)
 
-		#while(prort_ready is False):
-		#	try:
-		#		sp = serial.Serial(port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-		#				xonxoff=False, rtscts=False, stopbits=serial.STOPBITS_ONE, timeout=None, dsrdtr=False)
-		#		# break
-		#		prort_ready = sp.isOpen()
-		#	except:
-		#		print("Port busy or unplugged, retrying in two seconds")
-		#		time.sleep(2)
-		#		pass
+		port = '/dev/ttyACM0'
+		# port might be having issues, like being busy/delayed
+		port_ready = False
+
+		while(port_ready is False):
+			try:
+				sp = serial.Serial(port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+						xonxoff=False, rtscts=False, stopbits=serial.STOPBITS_ONE, timeout=None, dsrdtr=False)
+				# break
+				prort_ready = sp.isOpen()
+			except:
+				print("Port busy or unplugged, retrying in two seconds")
+				time.sleep(2)
+				pass
 
 		sample_num = 1
 		while(True):
-			if True:#sp.isOpen() == True:
-				#sp.setDTR(True) # dsrdtr is ignored on Windows.
-				#print('Sending command')
-				print(sample_num)
-
+			if sp.isOpen() == True:
+				sp.setDTR(True) # dsrdtr is ignored on Windows.
 				# get the date 
 				now = datetime.datetime.now()#.isoformat()
 				# we send subsecond 0 for simplicity, we don't need to be THAT accurate
@@ -60,10 +68,12 @@ class Thermal():
 				message = (now.year, now.month, now.day, now.isoweekday(), now.hour, now.minute, now.second, 0)
 				# paste date so we can parse
 				message = "date: " + str(message)
-				print(message.encode())
-				#sp.write(message.encode())
+				sp.write(message.encode())
 				# create_filename
 				if sample_num == 1:
+					print("Starting thermal camera on:")
+					print(message.encode())
+					print("Delay is " + self_delay + " seconds")
 					self.filename = now.strftime("%Y-%m-%dT%H-%M-%S") + "_thermal_timestamps.csv.gz"
 				# append to deques
 				self.samples.append(sample_num)
@@ -77,8 +87,9 @@ class Thermal():
 				# increase counter
 				sample_num = sample_num + 1
 				# sleep using delay
-				time.sleep(seconds_delay)
+				time.sleep(self.seconds_delay)
 
 if __name__ == '__main__':
-	thermal = Thermal()
+	# TODO: parse arguments here if calling from terminal
+	thermal = Thermal(seconds_delay = 30)
 	thermal.run()

@@ -166,7 +166,8 @@ class App():
 		# to end a process peacefully, use process.join(), this will wait for it to be done
 		# to end a process immediately (for infinite loops), use process.terminate(), gives it a SIGTERM signal which you can use to close the loop peacefully,
 		#   see https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully for example
-		self.thermal_process = mp.Process(target=Thermal.run, args=())
+		self.thermal = Thermal(seconds_delay = 30)
+		self.thermal_process = mp.Process(target=self.Thermal.run, args=())
 		#self.preview_camera_process = mp.Process(target=main.preview_camera, args=())
 		#self.main_process = mp.Process(target=main.run, args=())
 
@@ -239,7 +240,7 @@ class App():
 			print("Stop thermal camera in process")
 			self.thermal_process.terminate()
 			# initiate new one
-			self.thermal_process = mp.Process(target=trigger_thermal.run, args=())
+			self.thermal_process = mp.Process(target=self.Thermal.run, args=())
 			print("Thremal camera stopped. Ready to start again.") 
 		if self.main_process.is_alive():
 			print("Stop optic flow in process")

@@ -136,9 +136,6 @@ while(True):
                 tuple_time = parse_date(time_stamp)
                 # set the clock!
                 rtc.datetime(tuple_time)
-                blink(2)
-                pyb.delay(500)
-                blink(2)
                 try:
                     # generate filename with stamp
                     filename = create_filename(rtc.datetime())
@@ -159,6 +156,11 @@ while(True):
                     f.close()
                     pass
         else:
+            # TODO: introduce delay here ? this while is cycling very fast 
+            # maybe we should add pyb.delay(10)
+            # if data[:4] == "stop"
+            # machine.reset() ?
+            # else continue
             continue
     else:
         continue
