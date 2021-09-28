@@ -73,7 +73,7 @@ class Thermal():
 				if sample_num == 1:
 					print("Starting thermal camera on:")
 					print(message.encode())
-					print("Delay is " + self.seconds_delay + " seconds")
+					print("Delay is " + str(self.seconds_delay) + " seconds")
 					self.filename = now.strftime("%Y-%m-%dT%H-%M-%S") + "_thermal_timestamps.csv.gz"
 				# append to deques
 				self.samples.append(sample_num)
