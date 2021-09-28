@@ -51,7 +51,7 @@ class Thermal():
 				sp = serial.Serial(port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
 						xonxoff=False, rtscts=False, stopbits=serial.STOPBITS_ONE, timeout=None, dsrdtr=False)
 				# break
-				prort_ready = sp.isOpen()
+				port_ready = sp.isOpen()
 			except:
 				print("Port busy or unplugged, retrying in two seconds")
 				time.sleep(2)
@@ -73,7 +73,7 @@ class Thermal():
 				if sample_num == 1:
 					print("Starting thermal camera on:")
 					print(message.encode())
-					print("Delay is " + self_delay + " seconds")
+					print("Delay is " + self.seconds_delay + " seconds")
 					self.filename = now.strftime("%Y-%m-%dT%H-%M-%S") + "_thermal_timestamps.csv.gz"
 				# append to deques
 				self.samples.append(sample_num)
