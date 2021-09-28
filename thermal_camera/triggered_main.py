@@ -113,14 +113,9 @@ print("Radiometry Available: " + ("Yes" if sensor.ioctl(sensor.IOCTL_LEPTON_GET_
 sensor.set_pixformat(sensor.GRAYSCALE)
 sensor.set_framesize(sensor.QQVGA)
 sensor.skip_frames(time=5000)
-clock = time.clock()
-# sampling frequency in seconds
-sampling_freq = 30
 
-# Get time from raspberry
-
+pyb.LED(1).on()
 while(True):
-    pyb.LED(1).on()
     data = usb.read()
     if data != None:
         if len(data) >= 4:
