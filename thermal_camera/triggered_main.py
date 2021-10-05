@@ -61,7 +61,7 @@ def create_filename(datetime, ext=".jpg"):
     rec_hour = hour(datetime)
     make_dir("/" + rec_date)
     make_dir("/" + rec_date + "/" + rec_hour)
-    filename = "/" + rec_date +  "/" + rec_hour "/" + timestamp(datetime)
+    filename = "/" + rec_date +  "/" + rec_hour + "/" + timestamp(datetime)
     filename = filename + "_capture" + ext
     print(filename)
     return filename
