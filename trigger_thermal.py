@@ -60,6 +60,7 @@ class Thermal():
 		sample_num = 1
 		while(True):
 			if sp.isOpen() == True:
+				start = time.time()
 				sp.setDTR(True) # dsrdtr is ignored on Windows.
 				# get the date 
 				now = datetime.datetime.now()#.isoformat()
@@ -86,8 +87,10 @@ class Thermal():
 					self.timestamps.clear()
 				# increase counter
 				sample_num = sample_num + 1
+				end = time.time()
+				elapsed = end - start
 				# sleep using delay
-				time.sleep(self.seconds_delay)
+				time.sleep(self.seconds_delay - elapsed)
 
 if __name__ == '__main__':
 	# TODO: parse arguments here if calling from terminal
