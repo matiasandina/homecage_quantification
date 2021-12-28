@@ -6,8 +6,8 @@
 #' @param interval character vector of the time bin to provide to `cut` base function (e.g., "5 min")
 aggregate_data <- function(df, interval) {
   df %>% 
-    mutate(datetime = cut(datetime, interval)) %>% 
-    group_by(filename, datetime) %>% 
+    mutate(datetime_bin = cut(datetime, interval)) %>% 
+    group_by(filename, datetime_bin) %>% 
     summarise (
       movement = mean(movement),
       x = first(x),
