@@ -18,7 +18,8 @@ source("/home/choilab/homecage_quantification/flow_data_analysis/R/repair_baseli
 source("/home/choilab/homecage_quantification/flow_data_analysis/R/between_times.R")
 
 # time bins
-time_bins <- c("10 sec", "1 min", "5 min")
+#time_bins <- c("10 sec", "1 min", "5 min")
+time_bins <-c("5 min")
 names(time_bins) <- time_bins
 
 # lights on
@@ -218,6 +219,10 @@ server <- function(input, output, session) {
 
         files_to_read <- get_paths()
         print(files_to_read)
+        # Calculate total size 
+        total_size <- map_dbl(files_to_read, file.size) %>% sum / 1024^2
+        dialog_feed <- glue::glue("Trying to read {round(total_size, 2)} Mb... Please wait")
+        showModal(modalDialog(dialog_feed, easyClose = FALSE))
 
         # read and interpolate
         li <- lapply(files_to_read,
@@ -228,6 +233,7 @@ server <- function(input, output, session) {
         print(sapply(li, names))
         names(li) <- files_to_read
         output$status <- renderText("Reading Finished")
+        removeModal()
         return(li)
     })
     
@@ -237,14 +243,23 @@ server <- function(input, output, session) {
         
         req(is.integer(input$file) == FALSE && values$datasource == "upload")
         # user feedback ----
+        # get raw data
+        li <- raw()
         output$status <- renderText("Cleaning Data")
         print("Cleaning Data...")
         showModal(modalDialog("Cleaning data... Please wait.", easyClose = FALSE))
-        # get raw data
-        li <- raw()
-        # code for a plot
-        df <- bind_rows(li) 
-
+        # <- bind_rows was throwing  *** caught segfault ***
+        # see here https://github.com/r-lib/vctrs/issues/1495
+        # error traces back to vec_rbind(); it was solved by updating a vroom from 1.2.0 to 1.5.0
+        # bind_rows might be slow for big datasets?
+        #df <- bind_rows(li) %>% dtplyr::lazy_dt()
+        # this one is extremely slow
+        #df <- do.call(rbind, li)
+        # bind rows with data.table::rbindlist()
+        df <- data.table::rbindlist(li) %>% dtplyr::lazy_dt()
+        # We no longer need li so we can rm() and trigger gc() to get some memory back
+        rm(li)
+        gc()
         
         # clean and smooth -----
         print("Smoothing with median filter")
@@ -257,8 +272,9 @@ server <- function(input, output, session) {
             mutate(movement = ifelse(movement > 2e05, NA, movement),
                    movement = zoo::na.approx(movement, na.rm=F, rule=2)) %>% 
             # interpolated xy
-            mutate(i_x = median_filter(x),
-                   i_y = median_filter(y)) %>% 
+            # This will crash if x has close to 100% NA values (no animal detected ever)
+             mutate(i_x = median_filter(x),
+                    i_y = median_filter(y)) %>% 
             ungroup() 
         
         print("Smoothing baseline")
@@ -268,7 +284,7 @@ server <- function(input, output, session) {
             mutate(movement = repair_baseline(movement)) %>% 
             select(-lights_on)
             
-        print(df[nrow(df), "filename"])
+        #print(df[nrow(df), "filename"])
 
         removeModal()
         showModal(modalDialog("Aggregating and writing data... Please wait.", easyClose = FALSE))
@@ -286,12 +302,9 @@ server <- function(input, output, session) {
                                str_replace(string = bin, " ", "_"),
                                ".csv.gz")
             filename <- file.path(root, filename)
-
-                vroom::vroom_write(df %>%
-                                        aggregate_data(interval = bin),
-                                   path = filename)
+            vroom::vroom_write(df %>% aggregate_data(interval = bin) %>% as_tibble(),
+                                   file = filename)
             print(paste("writing", filename))
-            
                 }
                 )
         # filter dates 
