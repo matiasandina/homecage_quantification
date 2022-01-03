@@ -6,6 +6,8 @@
 #' @param interval character vector of the time bin to provide to `cut` base function (e.g., "5 min")
 aggregate_data <- function(df, interval) {
   df %>% 
+    # create datetime_bin as a factor 
+    # (data.table will throw errors when changing the type of datetime)
     mutate(datetime_bin = cut(datetime, interval)) %>% 
     group_by(filename, datetime_bin) %>% 
     summarise (
@@ -14,5 +16,7 @@ aggregate_data <- function(df, interval) {
       y = first(y),
       i_x = first(i_x),
       i_y = first(i_y)) %>% 
-    ungroup()
+    ungroup() %>% 
+    # change the name
+    rename(datetime = datetime_bin)
 }
